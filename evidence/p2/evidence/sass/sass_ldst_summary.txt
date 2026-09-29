@@ -1,0 +1,16 @@
+triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0                                 dir=BG6I2ILL ptr_params=7 params=9 sass_lines=249 {'LDG.64': 3, 'STG.64': 2}
+triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0                                 dir=EZ7I3YX3 ptr_params=7 params=8 sass_lines=217 {'LDG.64': 3, 'STG.64': 2}
+triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0                                 dir=KPPAUEQH ptr_params=7 params=9 sass_lines=249 {'LDG.64': 3, 'STG.64': 2}
+triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0                                 dir=OPYYZGBD ptr_params=7 params=9 sass_lines=249 {'LDG.64': 3, 'STG.64': 2}
+triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0                                 dir=TUI5ZIYC ptr_params=7 params=9 sass_lines=233 {'LDG.64': 3, 'STG.64': 2}
+_nv5_fused_add_rmsnorm_nc                                                          dir=WZFTU7D2 ptr_params=7 params=8 sass_lines=297 {'LDG.128': 3, 'STG.128': 2}
+cuda_ext:_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff531nv5_fu    dir=- ptr_params=None params=None sass_lines=1267 {'LDG.U16': 73, 'STG.U16': 34}
+cuda_ext:_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fu    dir=- ptr_params=None params=None sass_lines=1123 {'LDG.128': 12, 'STG.128': 8}
+cuda_ext:_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fu    dir=- ptr_params=None params=None sass_lines=771 {'LDG.128': 6, 'STG.128': 4}
+cuda_ext:_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fu    dir=- ptr_params=None params=None sass_lines=611 {'LDG.128': 3, 'STG.128': 2}
+cuda_ext:_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fu    dir=- ptr_params=None params=None sass_lines=579 {'LDG.128': 3, 'STG.128': 2}
+cuda_ext:_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff531nv5_fu    dir=- ptr_params=None params=None sass_lines=1267 {'LDG.U16': 73, 'STG.U16': 34}
+cuda_ext:_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fu    dir=- ptr_params=None params=None sass_lines=1235 {'LDG.128': 12, 'STG.128': 8}
+cuda_ext:_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fu    dir=- ptr_params=None params=None sass_lines=819 {'LDG.128': 6, 'STG.128': 4}
+cuda_ext:_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fu    dir=- ptr_params=None params=None sass_lines=627 {'LDG.128': 3, 'STG.128': 2}
+cuda_ext:_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fu    dir=- ptr_params=None params=None sass_lines=613 {'LDG.128': 3, 'STG.128': 2}

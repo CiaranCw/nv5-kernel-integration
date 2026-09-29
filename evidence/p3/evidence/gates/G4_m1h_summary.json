@@ -1,0 +1,65 @@
+{
+ "backend": "hybrid",
+ "calls": 3584,
+ "pass_calls": 3584,
+ "by_phase": {
+  "prefill": {
+   "calls": 56,
+   "rows": [
+    1379
+   ],
+   "ran": {
+    "cuda": 56
+   },
+   "route_ok": 56,
+   "pass_calls": 56,
+   "worst_opy": [
+    9.914340101522842e-06,
+    1
+   ],
+   "worst_opb": [
+    1.1330674401740392e-05,
+    1
+   ],
+   "baseline_same_process_bitwise": 0,
+   "captured_baseline_bitwise_REPORT_ONLY": 1
+  },
+  "decode": {
+   "calls": 3528,
+   "rows": [
+    8
+   ],
+   "ran": {
+    "baseline": 3528
+   },
+   "route_ok": 3528,
+   "pass_calls": 3528,
+   "worst_opy": [
+    0.000244140625,
+    1
+   ],
+   "worst_opb": [
+    0.0,
+    0
+   ],
+   "baseline_same_process_bitwise": 3528,
+   "captured_baseline_bitwise_REPORT_ONLY": 3528
+  }
+ },
+ "executed_counters": {
+  "cuda_impl": 56,
+  "baseline_add_rms_forward": 3528,
+  "reference_baseline_module": 3528
+ },
+ "fail_OP_R": 0,
+ "fail_OP_Y": 0,
+ "fail_OP_B": 0,
+ "route_mismatch": 0,
+ "nonfinite": 0,
+ "inputs_modified": 0,
+ "fail_examples": [],
+ "capture_index_sha256": "3e3dbbd568c5418d5263c4d9d50282c6e18eadcb765464b906680138e4fe46ae",
+ "per_call_csv_sha256": "6885a098a1ab3551e6a268fbe5b53cb44e5d98949841060da1bf5b65f6dafc2d",
+ "seconds": 10.5,
+ "M1H_PASS": true
+}

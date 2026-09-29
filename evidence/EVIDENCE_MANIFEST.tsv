@@ -1,0 +1,31 @@
+# NV5 standalone showcase - evidence manifest
+# Every file is a BYTE-IDENTICAL copy of the frozen copy in the old complete integration repo.
+# source_repo : https://github.com/CiaranCw/nv5-nanovllm-kernel-integration.git (private)
+# source_commit : a67ee1e2c6c907d33be0e39833ebba04c517998b (docs-only commit)
+# source_path : docs/nv5/evidence/<path>  (itself byte-identical to the local workspace original)
+# columns: path	source_path	sha256	bytes
+# path	source_path	sha256	bytes
+p05/evidence/contract_boundary_isolation.txt	docs/nv5/evidence/p05/evidence/contract_boundary_isolation.txt	e1e6a8c0c5a0bb9956885edb905b264ca5c402b854b7d4112186aa7500208b22	1289
+p05/evidence/final_lock/baseline_kernel_profile.txt	docs/nv5/evidence/p05/evidence/final_lock/baseline_kernel_profile.txt	9f933a955917b48491d3064ee021c2706ed2b5936958fd94f66cc94445bef5bf	3221
+p1a/evidence/mcal/r2/layer_divergence_summary.txt	docs/nv5/evidence/p1a/evidence/mcal/r2/layer_divergence_summary.txt	6b2abd06eb14892f9418573039c7fa82da7c3b78d83e1017179c56dbaa4281c2	5021
+p1a/evidence/mcal/r2/mcal_result.json	docs/nv5/evidence/p1a/evidence/mcal/r2/mcal_result.json	786bb93fa778d7ebc9fb1f822014ff86a0f547246a718b7820b1201eb4ab02f4	12936
+p1a_r1/evidence/m1/op_w_witness.json	docs/nv5/evidence/p1a_r1/evidence/m1/op_w_witness.json	536d91c87e5838447ef1cbcf4cbc76036b1b7ae7cab7ba0e94e9bef8445c3823	2165
+p1a_r1/evidence/m1/summary.json	docs/nv5/evidence/p1a_r1/evidence/m1/summary.json	11ac490cfe6b0b47616e6793ca3a01bb642de7df506783962b44e1c5ee024c9e	4082
+p1b/evidence/model/m2_min_repro_fa_block_table.json	docs/nv5/evidence/p1b/evidence/model/m2_min_repro_fa_block_table.json	98e5f0c67275a6b9867648d4dd3a33ff3950dd67b9115b0445d7265e18583da6	748
+p1b/evidence/op_gates/cuda/op_gates_summary.json	docs/nv5/evidence/p1b/evidence/op_gates/cuda/op_gates_summary.json	d1cb79372f177191d36b8f9f8eaad4dd96da9b88d25b654609131cd254cb5d29	14413
+p1b/evidence/op_gates/triton/op_gates_summary.json	docs/nv5/evidence/p1b/evidence/op_gates/triton/op_gates_summary.json	2efaf714c1da92ab2467c27f586ecce3386f2b12dc1c4eabbd4ab24553734545	13097
+p2/evidence/amdahl/amdahl_summary.txt	docs/nv5/evidence/p2/evidence/amdahl/amdahl_summary.txt	dc930e48cb64b3b981bb2d66b524c3c58dfb417c44baf1203d8a96aabfc9ec9d	3436
+p2/evidence/e2e/e2e_summary.txt	docs/nv5/evidence/p2/evidence/e2e/e2e_summary.txt	495d21d527e6472fa88b34d3b388186c64638fdff3813f21f55c5be041fd2f03	6056
+p2/evidence/host_overhead/baseline.json	docs/nv5/evidence/p2/evidence/host_overhead/baseline.json	5354fcd865affec26944aeeb91b78b000f4df8208f76fe85fb8ba7e4e1c16eb0	636
+p2/evidence/m2_attribution/padded_eager_cuda.json	docs/nv5/evidence/p2/evidence/m2_attribution/padded_eager_cuda.json	2ebca8755bb3c2a9325e6520a6491f8c17f98e885881d9d1c2a998f251de7aee	11845
+p2/evidence/m2prime/m2prime_results.json	docs/nv5/evidence/p2/evidence/m2prime/m2prime_results.json	174813de85c2958e1d36d63c74f77f4ab124ede057412d84f16a97a0421fd90f	6505
+p2/evidence/ncu/ncu_summary.txt	docs/nv5/evidence/p2/evidence/ncu/ncu_summary.txt	a5fa021d7fab860d6773cebf86c08ffad1c1e36effe461c84a6185722ee80259	2048
+p2/evidence/nsys_op/nsys_op_summary.txt	docs/nv5/evidence/p2/evidence/nsys_op/nsys_op_summary.txt	146a3a520b205ba0c1361b446398933b1b954d847790e3935bf7f32f691e3ff3	4453
+p2/evidence/sass/sass_ldst_summary.txt	docs/nv5/evidence/p2/evidence/sass/sass_ldst_summary.txt	0da951b9be72908f3a14ae29b245471bf5db1fc8356d1644019ae9aeb7267861	2582
+p3/evidence/attribution/attribution_summary.txt	docs/nv5/evidence/p3/evidence/attribution/attribution_summary.txt	d7c2d1e3491051ffd0c49a01c2268a004a638ca76af665ee2b19fde90e1ef05d	1620
+p3/evidence/gates/G4_m1h_summary.json	docs/nv5/evidence/p3/evidence/gates/G4_m1h_summary.json	7fbf3b9bc1c087eeab00d9f90fa24f617c049b96bab54d0b5daec620745d43c0	1217
+p3/evidence/gates/G6_G7_G8_impact.json	docs/nv5/evidence/p3/evidence/gates/G6_G7_G8_impact.json	ce478f7f8be5df86fd3bd24bffd18a8deeb8c37d5f74de4609d1c248df1abbf4	26557
+p3/evidence/perf_matrix/e2e_analysis.json	docs/nv5/evidence/p3/evidence/perf_matrix/e2e_analysis.json	58d932d756d1c22fff22350762d9a74a3b187442cbb2d658a0d80893978165a6	68679
+p3/evidence/perf_matrix/perf_tables.md	docs/nv5/evidence/p3/evidence/perf_matrix/perf_tables.md	17f77bbcc786a216bcbe9e29fe2576789ccf50a22af5b5289c21609c6334448c	8697
+p3/evidence/perf_matrix/sensitivity_excl_r8_POSTHOC.txt	docs/nv5/evidence/p3/evidence/perf_matrix/sensitivity_excl_r8_POSTHOC.txt	bd272a93e1c7e80ae768d77bdd6ce3b6c7a024d1bbed9f18c5172f02a410b84b	681
+requirements.lock.sanitized.txt	docs/nv5/evidence/requirements.lock.sanitized.txt	722158c16b24e545a08a1c8058ccd897ab414b64872dabb64efe7dd8f96bffc6	1351

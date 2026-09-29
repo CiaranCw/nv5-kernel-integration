@@ -1,0 +1,12 @@
+baseline_graph_bs8       prefill steps= 1 kern_sum= 15614.5us busy/wall=0.599 fused_n=56 fused_sum= 234.0us share=1.50%
+baseline_graph_bs8       decode  steps=63 kern_sum=  2430.0us busy/wall=0.809 fused_n=56 fused_sum=  47.1us share=1.91%
+baseline_graph_bs8_calls prefill steps= 1 kern_sum= 15706.2us busy/wall=0.624 fused_n=56 fused_sum= 235.1us share=1.50% host_in_fused_calls=5562us/step median/call=84.5us calls=56
+baseline_graph_bs8_calls decode  steps=63 kern_sum=  2422.9us busy/wall=0.808 fused_n=56 fused_sum=  44.3us share=1.89%
+cuda_graph_bs8           prefill steps= 1 kern_sum= 15562.4us busy/wall=0.636 fused_n=56 fused_sum= 202.8us share=1.30%
+cuda_graph_bs8           decode  steps=63 kern_sum=  2443.3us busy/wall=0.784 fused_n=56 fused_sum=  64.6us share=2.58%
+cuda_graph_bs8_calls     prefill steps= 1 kern_sum= 15596.6us busy/wall=0.615 fused_n=56 fused_sum= 201.3us share=1.29% host_in_fused_calls=2282us/step median/call=37.2us calls=56
+cuda_graph_bs8_calls     decode  steps=63 kern_sum=  2446.1us busy/wall=0.810 fused_n=56 fused_sum=  64.7us share=2.78%
+hybrid_graph_bs8         prefill steps= 1 kern_sum= 15564.5us busy/wall=0.612 fused_n=56 fused_sum= 201.9us share=1.30%
+hybrid_graph_bs8         decode  steps=63 kern_sum=  2426.8us busy/wall=0.814 fused_n=56 fused_sum=  43.5us share=1.88%
+hybrid_graph_bs8_calls   prefill steps= 1 kern_sum= 15345.3us busy/wall=0.612 fused_n=56 fused_sum= 202.0us share=1.32% host_in_fused_calls=3128us/step median/call=51.4us calls=56
+hybrid_graph_bs8_calls   decode  steps=63 kern_sum=  2421.0us busy/wall=0.793 fused_n=56 fused_sum=  43.5us share=1.87%

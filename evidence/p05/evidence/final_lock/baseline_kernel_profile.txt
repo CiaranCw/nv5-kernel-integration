@@ -1,0 +1,28 @@
+torch 2.9.1+cu130 | NVIDIA GeForce RTX 5080 | method: CUDA-graph node enumeration via driver API
+decode-like   N=1      H=1024 add_rms_forward   kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(1, 1, 1) block=(256, 1, 1)
+decode-like   N=1      H=1024 rms_forward[N,H]  kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(1, 1, 1) block=(256, 1, 1)
+    dynamo stats delta: unique_graphs 0 -> 2
+decode-like   N=2      H=1024 add_rms_forward   kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(2, 1, 1) block=(256, 1, 1)
+decode-like   N=2      H=1024 rms_forward[N,H]  kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(2, 1, 1) block=(256, 1, 1)
+    dynamo stats delta: unique_graphs 2 -> 4
+decode-like   N=8      H=1024 add_rms_forward   kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(8, 1, 1) block=(256, 1, 1)
+decode-like   N=8      H=1024 rms_forward[N,H]  kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(8, 1, 1) block=(256, 1, 1)
+    dynamo stats delta: unique_graphs 4 -> 4
+decode-like   N=64     H=1024 add_rms_forward   kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(64, 1, 1) block=(256, 1, 1)
+decode-like   N=64     H=1024 rms_forward[N,H]  kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(64, 1, 1) block=(256, 1, 1)
+    dynamo stats delta: unique_graphs 4 -> 4
+decode-like   N=512    H=1024 add_rms_forward   kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(512, 1, 1) block=(256, 1, 1)
+decode-like   N=512    H=1024 rms_forward[N,H]  kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(512, 1, 1) block=(256, 1, 1)
+    dynamo stats delta: unique_graphs 4 -> 4
+prefill-like  N=28     H=1024 add_rms_forward   kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(28, 1, 1) block=(256, 1, 1)
+prefill-like  N=28     H=1024 rms_forward[N,H]  kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(28, 1, 1) block=(256, 1, 1)
+    dynamo stats delta: unique_graphs 4 -> 4
+prefill-like  N=4096   H=1024 add_rms_forward   kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(4096, 1, 1) block=(256, 1, 1)
+prefill-like  N=4096   H=1024 rms_forward[N,H]  kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(4096, 1, 1) block=(256, 1, 1)
+    dynamo stats delta: unique_graphs 4 -> 4
+prefill-like  N=16384  H=1024 add_rms_forward   kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(16384, 1, 1) block=(256, 1, 1)
+prefill-like  N=16384  H=1024 rms_forward[N,H]  kernels=1 other_nodes=[] triton_per_fused__to_copy_add_mean_mul_pow_rsqrt_0 grid=(16384, 1, 1) block=(256, 1, 1)
+    dynamo stats delta: unique_graphs 4 -> 4
+q_norm        N=28 heads=16 D=128 noncontig kernels=1 triton_red_fused__to_copy_add_mean_mul_pow_rsqrt_0
+
+dynamo counters: stats={'calls_captured': 46, 'unique_graphs': 5} graph_break={} recompiles={} frames={'total': 5, 'ok': 5}

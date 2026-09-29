@@ -1,0 +1,35 @@
+{
+ "backend": "baseline",
+ "cache_entries": {
+  "add_rms_forward": 2,
+  "rms_forward": 4
+ },
+ "dynamo_cache_size_limit": 8,
+ "inline_inbuilt_nn_modules": true,
+ "torch_function_stack_len_nano_state": 1,
+ "us_per_call_nano_state": {
+  "8": [
+   91.09760799765354,
+   100.74653799529187,
+   115.97946799884085
+  ],
+  "1379": [
+   95.90054799627978,
+   101.90700199746061,
+   116.42736999783665
+  ]
+ },
+ "torch_function_stack_len_removed": 0,
+ "us_per_call_mode_removed": {
+  "8": [
+   61.179443997389164,
+   63.15683999855538,
+   64.46783599676564
+  ],
+  "1379": [
+   60.4151540028397,
+   62.204754001868416,
+   62.56448400381487
+  ]
+ }
+}

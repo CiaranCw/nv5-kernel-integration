@@ -1,0 +1,339 @@
+{
+ "order": [
+  "baseline_eager_a",
+  "baseline_eager_b",
+  "triton_eager_a",
+  "triton_eager_b",
+  "cuda_eager_a",
+  "cuda_eager_b",
+  "baseline_graph_a",
+  "baseline_graph_b",
+  "triton_graph_a",
+  "triton_graph_b",
+  "cuda_graph_a",
+  "cuda_graph_b"
+ ],
+ "V5": true,
+ "best_config_counts": [
+  9,
+  9,
+  9,
+  9,
+  9,
+  9,
+  13,
+  13,
+  13,
+  13,
+  13,
+  13
+ ],
+ "baseline": {
+  "M2p_1_repeatability": {
+   "eager_logits": true,
+   "eager_tokens": true,
+   "eager_sampled": true,
+   "eager_layers": true,
+   "graph_logits": true,
+   "graph_tokens": true,
+   "graph_sampled": true,
+   "PASS": true
+  },
+  "R3_graph_vs_eager": {
+   "logits_rows_bitwise": 8,
+   "first_token_divergence_t": [
+    null,
+    null,
+    4,
+    null,
+    22,
+    16,
+    null,
+    33
+   ],
+   "aggregate": {
+    "logits_maxabs": 41.75,
+    "logits_meanabs": 0.9416917712801576,
+    "top1_agree": 0.693359375,
+    "kl_mean": 6.559904168908222
+   }
+  },
+  "M3": {
+   "baseline_eager_a": {
+    "n_params": 227,
+    "param_sha": "35f51a0f99edaab3",
+    "kv_blocks": 355,
+    "graphs": 0
+   },
+   "baseline_eager_b": {
+    "n_params": 227,
+    "param_sha": "35f51a0f99edaab3",
+    "kv_blocks": 355,
+    "graphs": 0
+   },
+   "baseline_graph_a": {
+    "n_params": 227,
+    "param_sha": "35f51a0f99edaab3",
+    "kv_blocks": 355,
+    "graphs": 36
+   },
+   "baseline_graph_b": {
+    "n_params": 227,
+    "param_sha": "35f51a0f99edaab3",
+    "kv_blocks": 355,
+    "graphs": 36
+   }
+  }
+ },
+ "triton": {
+  "M2p_1_repeatability": {
+   "eager_logits": true,
+   "eager_tokens": true,
+   "eager_sampled": true,
+   "eager_layers": true,
+   "graph_logits": true,
+   "graph_tokens": true,
+   "graph_sampled": true,
+   "PASS": true
+  },
+  "M2p_2_routing": {
+   "eager_route": {
+    "candidate_calls_loop": 3584,
+    "baseline_fused_executed_loop": 0,
+    "baseline_dispatch_loop": 0,
+    "unregistered_impl": 0,
+    "n_sites": 56,
+    "per_site_counts": [
+     64
+    ],
+    "non_candidate_site_paths": {},
+    "rms_only_loop": {
+     "loop|rms_only_hidden|rms_forward": 64,
+     "loop|rms_only_qk|rms_forward": 3584
+    },
+    "baseline_rms_only_loop": {
+     "loop|rms_only_hidden|rms_forward": 64,
+     "loop|rms_only_qk|rms_forward": 3584
+    },
+    "init_route": {
+     "init|fused|impl:triton": 56,
+     "init|rms_only_hidden|rms_forward": 1,
+     "init|rms_only_qk|rms_forward": 56
+    },
+    "backend_ids": {
+     "triton": 113
+    },
+    "PASS": true
+   },
+   "graph_nodes_all36": true,
+   "graph_nodes_bs8": {
+    "total": 423,
+    "base_total": 423,
+    "candidate": 56,
+    "per": 1,
+    "base_per": 57,
+    "red": 56,
+    "base_red": 56,
+    "other": 310,
+    "base_other": 310,
+    "base_candidate": 0,
+    "ok": true
+   },
+   "graph_nodes_b_all36": true,
+   "baseline_add_rms_executed_any_phase": {
+    "eager_a": 0,
+    "eager_b": 0,
+    "graph_a": 0,
+    "graph_b": 0
+   },
+   "graph_run_fused_route": {
+    "init|fused|impl:triton": 4088,
+    "loop|fused|impl:triton": 56
+   },
+   "PASS": true
+  },
+  "R3_graph_vs_eager": {
+   "logits_rows_bitwise": 8,
+   "first_token_divergence_t": [
+    null,
+    null,
+    null,
+    null,
+    22,
+    null,
+    null,
+    48
+   ],
+   "aggregate": {
+    "logits_maxabs": 41.71875,
+    "logits_meanabs": 0.23738897659459862,
+    "top1_agree": 0.921875,
+    "kl_mean": 1.2663112469782427
+   }
+  },
+  "R3_candidate_vs_baseline_eager": {
+   "first_token_divergence_t": [
+    null,
+    null,
+    null,
+    null,
+    22,
+    null,
+    40,
+    null
+   ]
+  },
+  "M3": {
+   "triton_eager_a": {
+    "n_params": 227,
+    "param_sha": "35f51a0f99edaab3",
+    "kv_blocks": 355,
+    "graphs": 0
+   },
+   "triton_eager_b": {
+    "n_params": 227,
+    "param_sha": "35f51a0f99edaab3",
+    "kv_blocks": 355,
+    "graphs": 0
+   },
+   "triton_graph_a": {
+    "n_params": 227,
+    "param_sha": "35f51a0f99edaab3",
+    "kv_blocks": 355,
+    "graphs": 36
+   },
+   "triton_graph_b": {
+    "n_params": 227,
+    "param_sha": "35f51a0f99edaab3",
+    "kv_blocks": 355,
+    "graphs": 36
+   }
+  }
+ },
+ "cuda": {
+  "M2p_1_repeatability": {
+   "eager_logits": true,
+   "eager_tokens": true,
+   "eager_sampled": true,
+   "eager_layers": true,
+   "graph_logits": true,
+   "graph_tokens": true,
+   "graph_sampled": true,
+   "PASS": true
+  },
+  "M2p_2_routing": {
+   "eager_route": {
+    "candidate_calls_loop": 3584,
+    "baseline_fused_executed_loop": 0,
+    "baseline_dispatch_loop": 0,
+    "unregistered_impl": 0,
+    "n_sites": 56,
+    "per_site_counts": [
+     64
+    ],
+    "non_candidate_site_paths": {},
+    "rms_only_loop": {
+     "loop|rms_only_hidden|rms_forward": 64,
+     "loop|rms_only_qk|rms_forward": 3584
+    },
+    "baseline_rms_only_loop": {
+     "loop|rms_only_hidden|rms_forward": 64,
+     "loop|rms_only_qk|rms_forward": 3584
+    },
+    "init_route": {
+     "init|fused|impl:cuda": 56,
+     "init|rms_only_hidden|rms_forward": 1,
+     "init|rms_only_qk|rms_forward": 56
+    },
+    "backend_ids": {
+     "cuda": 113
+    },
+    "PASS": true
+   },
+   "graph_nodes_all36": true,
+   "graph_nodes_bs8": {
+    "total": 423,
+    "base_total": 423,
+    "candidate": 56,
+    "per": 1,
+    "base_per": 57,
+    "red": 56,
+    "base_red": 56,
+    "other": 310,
+    "base_other": 310,
+    "base_candidate": 0,
+    "ok": true
+   },
+   "graph_nodes_b_all36": true,
+   "baseline_add_rms_executed_any_phase": {
+    "eager_a": 0,
+    "eager_b": 0,
+    "graph_a": 0,
+    "graph_b": 0
+   },
+   "graph_run_fused_route": {
+    "init|fused|impl:cuda": 4088,
+    "loop|fused|impl:cuda": 56
+   },
+   "PASS": true
+  },
+  "R3_graph_vs_eager": {
+   "logits_rows_bitwise": 8,
+   "first_token_divergence_t": [
+    null,
+    null,
+    null,
+    null,
+    22,
+    null,
+    null,
+    48
+   ],
+   "aggregate": {
+    "logits_maxabs": 41.71875,
+    "logits_meanabs": 0.23743526843571727,
+    "top1_agree": 0.921875,
+    "kl_mean": 1.266310770676253
+   }
+  },
+  "R3_candidate_vs_baseline_eager": {
+   "first_token_divergence_t": [
+    null,
+    null,
+    null,
+    null,
+    22,
+    null,
+    40,
+    null
+   ]
+  },
+  "M3": {
+   "cuda_eager_a": {
+    "n_params": 227,
+    "param_sha": "35f51a0f99edaab3",
+    "kv_blocks": 355,
+    "graphs": 0
+   },
+   "cuda_eager_b": {
+    "n_params": 227,
+    "param_sha": "35f51a0f99edaab3",
+    "kv_blocks": 355,
+    "graphs": 0
+   },
+   "cuda_graph_a": {
+    "n_params": 227,
+    "param_sha": "35f51a0f99edaab3",
+    "kv_blocks": 355,
+    "graphs": 36
+   },
+   "cuda_graph_b": {
+    "n_params": 227,
+    "param_sha": "35f51a0f99edaab3",
+    "kv_blocks": 355,
+    "graphs": 36
+   }
+  }
+ },
+ "M3_PASS": true
+}

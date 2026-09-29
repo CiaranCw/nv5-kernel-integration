@@ -1,0 +1,160 @@
+{
+ "baseline_replay": {
+  "all_bitwise": true,
+  "y_mismatch_calls": 0,
+  "ro_mismatch_calls": 0,
+  "replay_compiles": [
+   0
+  ]
+ },
+ "inputs_unchanged_all": true,
+ "baseline_captured_informational": {
+  "calls": 3584,
+  "pass_calls": 3584,
+  "fail_OP_R": 0,
+  "fail_OP_Y": 0,
+  "fail_OP_B": 0,
+  "nonfinite": 0,
+  "worst_opy_frac": 0.000244140625,
+  "worst_opy_ulp": 1,
+  "worst_opb_frac": 0.0,
+  "worst_opb_ulp": 0,
+  "worst_opr_mis": 0,
+  "fail_by_phase": {
+   "prefill": 0,
+   "decode": 0
+  },
+  "fail_by_site_kind": {
+   "input": 0,
+   "post": 0,
+   "final": 0
+  },
+  "first_fail_examples": []
+ },
+ "positive_reference_nc": {
+  "calls": 3584,
+  "pass_calls": 3584,
+  "fail_OP_R": 0,
+  "fail_OP_Y": 0,
+  "fail_OP_B": 0,
+  "nonfinite": 0,
+  "worst_opy_frac": 0.0,
+  "worst_opy_ulp": 0,
+  "worst_opb_frac": 0.000244140625,
+  "worst_opb_ulp": 1,
+  "worst_opr_mis": 0,
+  "fail_by_phase": {
+   "prefill": 0,
+   "decode": 0
+  },
+  "fail_by_site_kind": {
+   "input": 0,
+   "post": 0,
+   "final": 0
+  },
+  "first_fail_examples": []
+ },
+ "negative_reference_wrong_c6r": {
+  "calls": 3584,
+  "pass_calls": 0,
+  "fail_OP_R": 0,
+  "fail_OP_Y": 3584,
+  "fail_OP_B": 3584,
+  "nonfinite": 0,
+  "worst_opy_frac": 0.2994384765625,
+  "worst_opy_ulp": 2,
+  "worst_opb_frac": 0.2994384765625,
+  "worst_opb_ulp": 2,
+  "worst_opr_mis": 0,
+  "fail_by_phase": {
+   "prefill": 56,
+   "decode": 3528
+  },
+  "fail_by_site_kind": {
+   "input": 1728,
+   "post": 1792,
+   "final": 64
+  },
+  "first_fail_examples": [
+   {
+    "call": 0,
+    "step": 0,
+    "module": "model.layers.0.post_attention_layernorm",
+    "prefill": true,
+    "rows": 1379,
+    "x_sha": "efee000d432d60bed985974d7ee08d9300fc6a2359f4b65e33cbcd30dabad177",
+    "reference_wrong_c6r.opy_frac": 0.2431803503444525,
+    "reference_wrong_c6r.opy_ulp": 2,
+    "reference_wrong_c6r.opb_frac": 0.24317680950870196,
+    "reference_wrong_c6r.opb_ulp": 2,
+    "reference_wrong_c6r.opr_mis": 0
+   },
+   {
+    "call": 1,
+    "step": 0,
+    "module": "model.layers.1.input_layernorm",
+    "prefill": true,
+    "rows": 1379,
+    "x_sha": "7316c6cceea5b768fb748149cc94cc2eab6fea7f0ed86ba3067239a90d5752af",
+    "reference_wrong_c6r.opy_frac": 0.21517658856055114,
+    "reference_wrong_c6r.opy_ulp": 2,
+    "reference_wrong_c6r.opb_frac": 0.21517800489485134,
+    "reference_wrong_c6r.opb_ulp": 2,
+    "reference_wrong_c6r.opr_mis": 0
+   },
+   {
+    "call": 2,
+    "step": 0,
+    "module": "model.layers.1.post_attention_layernorm",
+    "prefill": true,
+    "rows": 1379,
+    "x_sha": "ca2fa121b727a7d6150013e22c7295bc46980a38a606e31a4e2afc811fd3e6e1",
+    "reference_wrong_c6r.opy_frac": 0.2145534014684554,
+    "reference_wrong_c6r.opy_ulp": 2,
+    "reference_wrong_c6r.opb_frac": 0.2145534014684554,
+    "reference_wrong_c6r.opb_ulp": 2,
+    "reference_wrong_c6r.opr_mis": 0
+   },
+   {
+    "call": 3,
+    "step": 0,
+    "module": "model.layers.2.input_layernorm",
+    "prefill": true,
+    "rows": 1379,
+    "x_sha": "46d647056bc8a5344f30e90e2519ee7d15d6ac5c6619d9c1f349bb64cf98d216",
+    "reference_wrong_c6r.opy_frac": 0.21516100888324874,
+    "reference_wrong_c6r.opy_ulp": 2,
+    "reference_wrong_c6r.opb_frac": 0.21516313338469906,
+    "reference_wrong_c6r.opb_ulp": 2,
+    "reference_wrong_c6r.opr_mis": 0
+   },
+   {
+    "call": 4,
+    "step": 0,
+    "module": "model.layers.2.post_attention_layernorm",
+    "prefill": true,
+    "rows": 1379,
+    "x_sha": "b7e84a17e094e168416ef376715ac972060f78e6d8b6c68af8a37cc0bbb0105e",
+    "reference_wrong_c6r.opy_frac": 0.21972443799854968,
+    "reference_wrong_c6r.opy_ulp": 2,
+    "reference_wrong_c6r.opb_frac": 0.2197265625,
+    "reference_wrong_c6r.opb_ulp": 2,
+    "reference_wrong_c6r.opr_mis": 0
+   }
+  ]
+ },
+ "dynamo": {
+  "frames": {
+   "total": 2,
+   "ok": 2
+  },
+  "stats": {
+   "calls_captured": 22,
+   "unique_graphs": 2
+  }
+ },
+ "per_call_results_sha256": "1916e21f338f7cf13a4c2f3aaa1712a0f9c3c7aba7a9c2ad27bdc9f4a9c1756f",
+ "capture_index_sha256": "3e3dbbd568c5418d5263c4d9d50282c6e18eadcb765464b906680138e4fe46ae",
+ "seconds": 23.7,
+ "verdict_real_activation_part": "NEGATIVE_DETECTED"
+}

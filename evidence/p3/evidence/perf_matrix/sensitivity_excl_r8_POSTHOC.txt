@@ -1,0 +1,10 @@
+# POST-HOC sensitivity, NOT part of the locked decision: rounds 1-7 only (round 8 host loadavg elevated)
+bs8_T8   d_H  mean -3.32% sd 4.17% neg 5/7 CI95 [-6.18, -0.59]%
+bs8_T8   d_C  mean -4.76% sd 2.81% neg 7/7 CI95 [-6.61, -2.78]%
+bs8_T8   d_B2 mean +2.12% sd 3.49% neg 4/7 CI95 [+0.07, +4.74]%
+bs8_T16  d_H  mean -1.46% sd 3.87% neg 5/7 CI95 [-3.92, +1.41]%
+bs8_T16  d_C  mean -3.73% sd 2.65% neg 7/7 CI95 [-5.63, -2.02]%
+bs8_T16  d_B2 mean +0.62% sd 2.47% neg 5/7 CI95 [-0.84, +2.39]%
+bs8_T64  d_H  mean -1.64% sd 3.36% neg 5/7 CI95 [-4.03, +0.45]%
+bs8_T64  d_C  mean -2.70% sd 3.34% neg 6/7 CI95 [-5.24, -0.81]%
+bs8_T64  d_B2 mean -1.38% sd 2.76% neg 5/7 CI95 [-3.34, +0.36]%

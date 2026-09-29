@@ -1,0 +1,26 @@
+{
+ "eager_cols=1 vs graph_cols=16, default num_splits=0 (as nano)": {
+  "narrow_vs_wide_bitwise": false,
+  "mismatch_frac": 0.10186767578125,
+  "max_abs": 0.001953125,
+  "narrow_repeat_bitwise": true
+ },
+ "eager_cols=1 vs graph_cols=16, forced num_splits=1 (diagnostic)": {
+  "narrow_vs_wide_bitwise": true,
+  "mismatch_frac": 0.0,
+  "max_abs": 0.0,
+  "narrow_repeat_bitwise": true
+ },
+ "eager_cols=2 vs graph_cols=16, default num_splits=0 (as nano)": {
+  "narrow_vs_wide_bitwise": true,
+  "mismatch_frac": 0.0,
+  "max_abs": 0.0,
+  "narrow_repeat_bitwise": true
+ },
+ "eager_cols=2 vs graph_cols=16, forced num_splits=1 (diagnostic)": {
+  "narrow_vs_wide_bitwise": true,
+  "mismatch_frac": 0.0,
+  "max_abs": 0.0,
+  "narrow_repeat_bitwise": true
+ }
+}

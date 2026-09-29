@@ -1,0 +1,780 @@
+{
+ "backend": "cuda",
+ "matrix": {
+  "cases": 442,
+  "pass_cases": 442,
+  "OP_R_fail": 0,
+  "OP_Y_fail": 0,
+  "OP_B_fail": 0,
+  "OP_M_fail": 0,
+  "nonfinite": 0,
+  "worst_opy": [
+   0.00027901785714285713,
+   1
+  ],
+  "worst_opb": [
+   0.00027901785714285713,
+   1
+  ],
+  "baseline_compiled_guard_min_frac_vs_NE": 0.18896484375,
+  "baseline_worst_vs_onc": [
+   0.000244140625,
+   1
+  ],
+  "baseline_is_compiled_path": true
+ },
+ "op_w_canonical": {
+  "bfloat16": {
+   "matches": [
+    "(U,U,N)"
+   ],
+   "worst": {
+    "(U,U,Y)": [
+     0.455078125,
+     1
+    ],
+    "(U,U,N)": [
+     1.52587890625e-05,
+     1
+    ],
+    "(U,R,Y)": [
+     0.780517578125,
+     2
+    ],
+    "(U,R,N)": [
+     0.758544921875,
+     1
+    ],
+    "(R,U,Y)": [
+     0.455078125,
+     2
+    ],
+    "(R,U,N)": [
+     0.236328125,
+     1
+    ],
+    "(R,R,Y)": [
+     0.780517578125,
+     2
+    ],
+    "(R,R,N)": [
+     0.75830078125,
+     2
+    ]
+   }
+  },
+  "float16": {
+   "matches": [
+    "(U,U,N)"
+   ],
+   "worst": {
+    "(U,U,Y)": [
+     0.46875,
+     1
+    ],
+    "(U,U,N)": [
+     0.0009765625,
+     1
+    ],
+    "(U,R,Y)": [
+     0.776611328125,
+     2
+    ],
+    "(U,R,N)": [
+     0.774169921875,
+     1
+    ],
+    "(R,U,Y)": [
+     0.46875,
+     2
+    ],
+    "(R,U,N)": [
+     0.2353515625,
+     1
+    ],
+    "(R,R,Y)": [
+     0.776611328125,
+     2
+    ],
+    "(R,R,N)": [
+     0.774169921875,
+     2
+    ]
+   }
+  }
+ },
+ "op_w_full_matrix": {
+  "bfloat16": {
+   "matches": [
+    "(U,U,N)"
+   ],
+   "worst": {
+    "(U,U,Y)": [
+     0.4638671875,
+     1
+    ],
+    "(U,U,N)": [
+     0.0001220703125,
+     1
+    ],
+    "(U,R,Y)": [
+     0.8046875,
+     2
+    ],
+    "(U,R,N)": [
+     0.7841796875,
+     1
+    ],
+    "(R,U,Y)": [
+     0.4638671875,
+     2
+    ],
+    "(R,U,N)": [
+     0.236083984375,
+     1
+    ],
+    "(R,R,Y)": [
+     0.8046875,
+     2
+    ],
+    "(R,R,N)": [
+     0.7841796875,
+     2
+    ]
+   }
+  },
+  "float16": {
+   "matches": [
+    "(U,U,N)"
+   ],
+   "worst": {
+    "(U,U,Y)": [
+     0.4755859375,
+     1
+    ],
+    "(U,U,N)": [
+     0.00027901785714285713,
+     1
+    ],
+    "(U,R,Y)": [
+     0.796875,
+     2
+    ],
+    "(U,R,N)": [
+     0.796875,
+     1
+    ],
+    "(R,U,Y)": [
+     0.4755859375,
+     2
+    ],
+    "(R,U,N)": [
+     0.2392578125,
+     1
+    ],
+    "(R,R,Y)": [
+     0.796875,
+     2
+    ],
+    "(R,R,N)": [
+     0.796875,
+     2
+    ]
+   }
+  }
+ },
+ "op_a": {
+  "calls": 512,
+  "sites": [
+   "model.layers.0.post_attention_layernorm",
+   "model.layers.1.input_layernorm",
+   "model.layers.1.post_attention_layernorm",
+   "model.layers.13.input_layernorm",
+   "model.layers.13.post_attention_layernorm",
+   "model.layers.27.input_layernorm",
+   "model.layers.27.post_attention_layernorm",
+   "model.norm"
+  ],
+  "opr_fail_calls": 0,
+  "matches": [
+   "(U,U,N)"
+  ],
+  "worst": {
+   "(U,U,Y)": [
+    0.2808837890625,
+    1
+   ],
+   "(U,U,N)": [
+    0.000244140625,
+    1
+   ],
+   "(U,R,Y)": [
+    0.36328125,
+    2
+   ],
+   "(U,R,N)": [
+    0.24658203125,
+    1
+   ],
+   "(R,U,Y)": [
+    0.3065185546875,
+    2
+   ],
+   "(R,U,N)": [
+    0.1798095703125,
+    1
+   ],
+   "(R,R,Y)": [
+    0.3843994140625,
+    2
+   ],
+   "(R,R,N)": [
+    0.2965087890625,
+    2
+   ]
+  },
+  "PASS": true
+ },
+ "op_f": {
+  "invalid_inputs": {
+   "fp32 (ALLOW_FALLBACK=None)": "raised NV5BackendError: unsupported dtype torch.float32; only bf16/fp16 are supported (fp32 is rejected)",
+   "fp16/bf16 dtype mismatch (ALLOW_FALLBACK=None)": "raised NV5BackendError: dtype mismatch: x=torch.bfloat16 residual=torch.float16 weight=torch.bfloat16",
+   "weight dtype mismatch (ALLOW_FALLBACK=None)": "raised NV5BackendError: dtype mismatch: x=torch.bfloat16 residual=torch.bfloat16 weight=torch.float16",
+   "non-contiguous x (ALLOW_FALLBACK=None)": "raised NV5BackendError: x, residual and weight must be contiguous",
+   "non-contiguous residual (ALLOW_FALLBACK=None)": "raised NV5BackendError: x, residual and weight must be contiguous",
+   "non-2D x (ALLOW_FALLBACK=None)": "raised NV5BackendError: shape mismatch: expected x=[N,H], residual=[N,H], weight=[H]; got (2, 4, 1024), (2, 4, 102",
+   "weight size mismatch (ALLOW_FALLBACK=None)": "raised NV5BackendError: shape mismatch: expected x=[N,H], residual=[N,H], weight=[H]; got (8, 1024), (8, 1024), (5",
+   "residual shape mismatch (ALLOW_FALLBACK=None)": "raised NV5BackendError: shape mismatch: expected x=[N,H], residual=[N,H], weight=[H]; got (8, 1024), (4, 1024), (1",
+   "cpu tensors (ALLOW_FALLBACK=None)": "raised NV5BackendError: x, residual and weight must be CUDA tensors",
+   "fp32 (ALLOW_FALLBACK=1)": "raised NV5BackendError: unsupported dtype torch.float32; only bf16/fp16 are supported (fp32 is rejected)",
+   "fp16/bf16 dtype mismatch (ALLOW_FALLBACK=1)": "raised NV5BackendError: dtype mismatch: x=torch.bfloat16 residual=torch.float16 weight=torch.bfloat16",
+   "weight dtype mismatch (ALLOW_FALLBACK=1)": "raised NV5BackendError: dtype mismatch: x=torch.bfloat16 residual=torch.bfloat16 weight=torch.float16",
+   "non-contiguous x (ALLOW_FALLBACK=1)": "raised NV5BackendError: x, residual and weight must be contiguous",
+   "non-contiguous residual (ALLOW_FALLBACK=1)": "raised NV5BackendError: x, residual and weight must be contiguous",
+   "non-2D x (ALLOW_FALLBACK=1)": "raised NV5BackendError: shape mismatch: expected x=[N,H], residual=[N,H], weight=[H]; got (2, 4, 1024), (2, 4, 102",
+   "weight size mismatch (ALLOW_FALLBACK=1)": "raised NV5BackendError: shape mismatch: expected x=[N,H], residual=[N,H], weight=[H]; got (8, 1024), (8, 1024), (5",
+   "residual shape mismatch (ALLOW_FALLBACK=1)": "raised NV5BackendError: shape mismatch: expected x=[N,H], residual=[N,H], weight=[H]; got (8, 1024), (4, 1024), (1",
+   "cpu tensors (ALLOW_FALLBACK=1)": "raised NV5BackendError: x, residual and weight must be CUDA tensors"
+  },
+  "misaligned_supported": {
+   "bfloat16 N=8 H=1024 ptr%16=(2,2,2)": {
+    "opr_mis": 0,
+    "opy_frac": 0.0,
+    "opy_ulp": 0,
+    "ok": true
+   },
+   "bfloat16 N=1379 H=1024 ptr%16=(2,2,2)": {
+    "opr_mis": 0,
+    "opy_frac": 8.498005801305294e-06,
+    "opy_ulp": 1,
+    "ok": true
+   },
+   "bfloat16 N=7 H=1000 ptr%16=(2,2,2)": {
+    "opr_mis": 0,
+    "opy_frac": 0.0,
+    "opy_ulp": 0,
+    "ok": true
+   },
+   "float16 N=8 H=1024 ptr%16=(2,2,2)": {
+    "opr_mis": 0,
+    "opy_frac": 0.0,
+    "opy_ulp": 0,
+    "ok": true
+   },
+   "float16 N=1379 H=1024 ptr%16=(2,2,2)": {
+    "opr_mis": 0,
+    "opy_frac": 6.161054205946338e-05,
+    "opy_ulp": 1,
+    "ok": true
+   },
+   "float16 N=7 H=1000 ptr%16=(2,2,2)": {
+    "opr_mis": 0,
+    "opy_frac": 0.0,
+    "opy_ulp": 0,
+    "ok": true
+   }
+  },
+  "fallback_implemented": false,
+  "fallback_count": 0,
+  "PASS": true
+ },
+ "op_g": {
+  "cases": [
+   {
+    "dtype": "bfloat16",
+    "N": 1,
+    "H": 1024,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI13__nv_bfloat16Li128ELi1EEE",
+      "grid": [
+       1,
+       1,
+       1
+      ],
+      "block": [
+       128,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   },
+   {
+    "dtype": "bfloat16",
+    "N": 8,
+    "H": 1024,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI13__nv_bfloat16Li128ELi1EEE",
+      "grid": [
+       8,
+       1,
+       1
+      ],
+      "block": [
+       128,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   },
+   {
+    "dtype": "bfloat16",
+    "N": 512,
+    "H": 1024,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI13__nv_bfloat16Li128ELi1EEE",
+      "grid": [
+       512,
+       1,
+       1
+      ],
+      "block": [
+       128,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   },
+   {
+    "dtype": "bfloat16",
+    "N": 1379,
+    "H": 1024,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI13__nv_bfloat16Li128ELi1EEE",
+      "grid": [
+       1379,
+       1,
+       1
+      ],
+      "block": [
+       128,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   },
+   {
+    "dtype": "bfloat16",
+    "N": 16384,
+    "H": 1024,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI13__nv_bfloat16Li128ELi1EEE",
+      "grid": [
+       16384,
+       1,
+       1
+      ],
+      "block": [
+       128,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   },
+   {
+    "dtype": "bfloat16",
+    "N": 8,
+    "H": 4096,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI13__nv_bfloat16Li256ELi2EEE",
+      "grid": [
+       8,
+       1,
+       1
+      ],
+      "block": [
+       256,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   },
+   {
+    "dtype": "bfloat16",
+    "N": 28,
+    "H": 1000,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI13__nv_bfloat16Li128ELi1EEE",
+      "grid": [
+       28,
+       1,
+       1
+      ],
+      "block": [
+       128,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   },
+   {
+    "dtype": "float16",
+    "N": 1,
+    "H": 1024,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI6__halfLi128ELi1EEEvPKT_S4_",
+      "grid": [
+       1,
+       1,
+       1
+      ],
+      "block": [
+       128,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   },
+   {
+    "dtype": "float16",
+    "N": 8,
+    "H": 1024,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI6__halfLi128ELi1EEEvPKT_S4_",
+      "grid": [
+       8,
+       1,
+       1
+      ],
+      "block": [
+       128,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   },
+   {
+    "dtype": "float16",
+    "N": 512,
+    "H": 1024,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI6__halfLi128ELi1EEEvPKT_S4_",
+      "grid": [
+       512,
+       1,
+       1
+      ],
+      "block": [
+       128,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   },
+   {
+    "dtype": "float16",
+    "N": 1379,
+    "H": 1024,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI6__halfLi128ELi1EEEvPKT_S4_",
+      "grid": [
+       1379,
+       1,
+       1
+      ],
+      "block": [
+       128,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   },
+   {
+    "dtype": "float16",
+    "N": 16384,
+    "H": 1024,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI6__halfLi128ELi1EEEvPKT_S4_",
+      "grid": [
+       16384,
+       1,
+       1
+      ],
+      "block": [
+       128,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   },
+   {
+    "dtype": "float16",
+    "N": 8,
+    "H": 4096,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI6__halfLi256ELi2EEEvPKT_S4_",
+      "grid": [
+       8,
+       1,
+       1
+      ],
+      "block": [
+       256,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   },
+   {
+    "dtype": "float16",
+    "N": 28,
+    "H": 1000,
+    "kernels": [
+     {
+      "name": "_ZN57_GLOBAL__N__79d467fa_24_nv5_fused_add_rmsnorm_cu_ca020ff528nv5_fused_add_rmsnorm_nc_vecI6__halfLi128ELi1EEEvPKT_S4_",
+      "grid": [
+       28,
+       1,
+       1
+      ],
+      "block": [
+       128,
+       1,
+       1
+      ]
+     }
+    ],
+    "other_nodes": [],
+    "replay_bitwise_eq_eager": true,
+    "jit_files_before_after": [
+     [
+      310,
+      15
+     ],
+     [
+      310,
+      15
+     ]
+    ],
+    "PASS": true
+   }
+  ],
+  "PASS": true
+ },
+ "gates": {
+  "OP_R": true,
+  "OP_Y": true,
+  "OP_B": true,
+  "OP_M": true,
+  "OP_W": true,
+  "OP_A": true,
+  "OP_F": true,
+  "OP_G": true
+ },
+ "ALL_PASS": true,
+ "seconds": 16.2
+}

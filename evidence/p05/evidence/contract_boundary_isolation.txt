@@ -1,0 +1,12 @@
+worst bit-mismatch fraction of BASELINE vs oracle, per input family
+dtype    family                     N-E(UUY)  N-C(UUN)      RUN      URN  C6-R(RRN)  HF-R(RRY)  ro_mis  mem_ok
+bfloat16 F1_random                  2.59e-01  1.14e-05 4.10e-02 2.24e-01   2.28e-01   3.43e-01       0    True
+bfloat16 F2_midpoint_w1             0.00e+00  0.00e+00 0.00e+00 7.50e-01   7.50e-01   7.50e-01       0    True
+bfloat16 F3_midpoint_randw          4.55e-01  0.00e+00 2.69e-03 7.59e-01   7.58e-01   7.81e-01       0    True
+bfloat16 F4_zero_residual_randw     2.58e-01  3.81e-06 3.81e-06 3.81e-06   3.81e-06   2.58e-01       0    True
+bfloat16 F5_biased_up               2.61e-01  1.91e-06 2.36e-01 2.49e-01   4.20e-02   2.60e-01       0    True
+float16  F1_random                  2.69e-01  9.16e-05 2.83e-02 2.29e-01   2.35e-01   3.59e-01       0    True
+float16  F2_midpoint_w1             0.00e+00  0.00e+00 0.00e+00 7.50e-01   7.50e-01   7.50e-01       0    True
+float16  F3_midpoint_randw          4.69e-01  0.00e+00 2.44e-04 7.74e-01   7.74e-01   7.77e-01       0    True
+float16  F4_zero_residual_randw     2.75e-01  5.10e-05 5.10e-05 5.10e-05   5.10e-05   2.75e-01       0    True
+float16  F5_biased_up               2.54e-01  7.63e-05 2.36e-01 2.51e-01   4.49e-02   2.62e-01       0    True

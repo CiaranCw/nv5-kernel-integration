@@ -1,0 +1,53 @@
+bit-mismatch fraction vs baseline (max ULP), per layer output; reference_nc | reference_wrong_c6r
+--- prefill
+  layer          0 residual ref 0.000e+00 (    0u) | wrong 0.000e+00 (    0u) | wrong/ref     inf
+  layer          0 hidden   ref 1.226e-03 ( 1426u) | wrong 6.836e-01 (30185u) | wrong/ref  557.65
+  layer          1 residual ref 2.211e-02 (29184u) | wrong 6.455e-01 (30464u) | wrong/ref   29.20
+  layer          1 hidden   ref 2.541e-01 (30033u) | wrong 8.196e-01 (30386u) | wrong/ref    3.23
+  layer          2 residual ref 2.705e-01 (30144u) | wrong 7.467e-01 (30544u) | wrong/ref    2.76
+  layer          2 hidden   ref 4.906e-01 (30224u) | wrong 8.502e-01 (30548u) | wrong/ref    1.73
+  layer          3 residual ref 4.774e-01 (30464u) | wrong 8.068e-01 (30608u) | wrong/ref    1.69
+  layer          3 hidden   ref 5.920e-01 (30672u) | wrong 8.710e-01 (30788u) | wrong/ref    1.47
+  layer          4 residual ref 5.690e-01 (30688u) | wrong 8.289e-01 (30760u) | wrong/ref    1.46
+  layer          4 hidden   ref 6.601e-01 (30750u) | wrong 8.808e-01 (30834u) | wrong/ref    1.33
+  layer          6 residual ref 6.890e-01 (30840u) | wrong 8.511e-01 (30996u) | wrong/ref    1.24
+  layer          6 hidden   ref 7.692e-01 (30920u) | wrong 9.028e-01 (31004u) | wrong/ref    1.17
+  layer          8 residual ref 7.510e-01 (31196u) | wrong 8.723e-01 (31256u) | wrong/ref    1.16
+  layer          8 hidden   ref 8.046e-01 (31144u) | wrong 9.130e-01 (31229u) | wrong/ref    1.13
+  layer         12 residual ref 8.074e-01 (31778u) | wrong 8.854e-01 (31846u) | wrong/ref    1.10
+  layer         12 hidden   ref 8.537e-01 (31667u) | wrong 9.237e-01 (31704u) | wrong/ref    1.08
+  layer         16 residual ref 8.544e-01 (32022u) | wrong 8.927e-01 (32036u) | wrong/ref    1.04
+  layer         16 hidden   ref 8.932e-01 (31766u) | wrong 9.153e-01 (31988u) | wrong/ref    1.02
+  layer         20 residual ref 8.660e-01 (31980u) | wrong 8.848e-01 (32042u) | wrong/ref    1.02
+  layer         20 hidden   ref 8.906e-01 (31643u) | wrong 9.058e-01 (31823u) | wrong/ref    1.02
+  layer         24 residual ref 8.723e-01 (32132u) | wrong 8.871e-01 (32231u) | wrong/ref    1.02
+  layer         24 hidden   ref 8.970e-01 (31857u) | wrong 9.109e-01 (31894u) | wrong/ref    1.02
+  layer         27 residual ref 8.843e-01 (32352u) | wrong 8.973e-01 (32468u) | wrong/ref    1.01
+  layer         27 hidden   ref 8.586e-01 (32352u) | wrong 8.746e-01 (32459u) | wrong/ref    1.02
+  layer final_norm hidden   ref 8.902e-01 (31981u) | wrong 9.049e-01 (32074u) | wrong/ref    1.02
+--- decode
+  layer          0 residual ref 0.000e+00 (    0u) | wrong 0.000e+00 (    0u) | wrong/ref     inf
+  layer          0 hidden   ref 1.186e-03 (  160u) | wrong 6.756e-01 (30422u) | wrong/ref  569.76
+  layer          1 residual ref 2.170e-02 (14976u) | wrong 6.364e-01 (30280u) | wrong/ref   29.32
+  layer          1 hidden   ref 3.990e-01 (29841u) | wrong 8.047e-01 (30351u) | wrong/ref    2.02
+  layer          2 residual ref 4.045e-01 (30208u) | wrong 7.361e-01 (30464u) | wrong/ref    1.82
+  layer          2 hidden   ref 6.617e-01 (30237u) | wrong 8.374e-01 (30446u) | wrong/ref    1.27
+  layer          3 residual ref 6.315e-01 (30528u) | wrong 7.994e-01 (30624u) | wrong/ref    1.27
+  layer          3 hidden   ref 7.778e-01 (30426u) | wrong 8.617e-01 (30552u) | wrong/ref    1.11
+  layer          4 residual ref 7.393e-01 (30552u) | wrong 8.201e-01 (30664u) | wrong/ref    1.11
+  layer          4 hidden   ref 8.280e-01 (30615u) | wrong 8.687e-01 (30664u) | wrong/ref    1.05
+  layer          6 residual ref 8.068e-01 (30752u) | wrong 8.410e-01 (30856u) | wrong/ref    1.04
+  layer          6 hidden   ref 8.708e-01 (30839u) | wrong 8.918e-01 (30833u) | wrong/ref    1.02
+  layer          8 residual ref 8.415e-01 (30848u) | wrong 8.628e-01 (31192u) | wrong/ref    1.03
+  layer          8 hidden   ref 8.902e-01 (30905u) | wrong 9.033e-01 (31010u) | wrong/ref    1.01
+  layer         12 residual ref 8.633e-01 (31480u) | wrong 8.774e-01 (31974u) | wrong/ref    1.02
+  layer         12 hidden   ref 9.066e-01 (31291u) | wrong 9.147e-01 (31862u) | wrong/ref    1.01
+  layer         16 residual ref 8.708e-01 (31507u) | wrong 8.809e-01 (31740u) | wrong/ref    1.01
+  layer         16 hidden   ref 8.995e-01 (31367u) | wrong 9.074e-01 (31429u) | wrong/ref    1.01
+  layer         20 residual ref 8.674e-01 (31832u) | wrong 8.776e-01 (31878u) | wrong/ref    1.01
+  layer         20 hidden   ref 8.928e-01 (31756u) | wrong 9.012e-01 (31809u) | wrong/ref    1.01
+  layer         24 residual ref 8.759e-01 (32200u) | wrong 8.854e-01 (32228u) | wrong/ref    1.01
+  layer         24 hidden   ref 8.980e-01 (31807u) | wrong 9.043e-01 (31948u) | wrong/ref    1.01
+  layer         27 residual ref 8.920e-01 (32336u) | wrong 8.995e-01 (32440u) | wrong/ref    1.01
+  layer         27 hidden   ref 8.782e-01 (32214u) | wrong 8.845e-01 (32039u) | wrong/ref    1.01
+  layer final_norm hidden   ref 9.042e-01 (32391u) | wrong 9.112e-01 (32012u) | wrong/ref    1.01

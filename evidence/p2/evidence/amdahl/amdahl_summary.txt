@@ -1,0 +1,18 @@
+baseline_graph_bs8         prefill steps= 1 wall=  27700.0us kern_sum=  15774.0 busy=  15774.0 busy/wall=0.569 fused_n=56 fused_sum=  234.1us share=1.48% amdahl<=1.0151
+baseline_graph_bs8         decode  steps=63 wall=   2979.3us kern_sum=   2407.2 busy=   2407.2 busy/wall=0.777 fused_n=56 fused_sum=   43.3us share=1.85% amdahl<=1.0188
+triton_graph_bs8           prefill steps= 1 wall=  37822.9us kern_sum=  15441.2 busy=  15441.2 busy/wall=0.408 fused_n=56 fused_sum=  205.6us share=1.33% amdahl<=1.0135
+triton_graph_bs8           decode  steps=63 wall=   3199.1us kern_sum=   2429.1 busy=   2429.1 busy/wall=0.754 fused_n=56 fused_sum=   60.0us share=2.33% amdahl<=1.0239
+cuda_graph_bs8             prefill steps= 1 wall=  27924.2us kern_sum=  15674.2 busy=  15674.2 busy/wall=0.561 fused_n=56 fused_sum=  205.2us share=1.31% amdahl<=1.0133
+cuda_graph_bs8             decode  steps=63 wall=   3105.3us kern_sum=   2427.5 busy=   2427.5 busy/wall=0.751 fused_n=56 fused_sum=   64.7us share=2.58% amdahl<=1.0265
+baseline_graph_bs64        prefill steps= 1 wall= 132169.6us kern_sum= 128971.8 busy= 128971.8 busy/wall=0.976 fused_n=56 fused_sum= 3276.8us share=2.54% amdahl<=1.0261
+baseline_graph_bs64        decode  steps=63 wall=   4876.4us kern_sum=   4032.1 busy=   4032.1 busy/wall=0.822 fused_n=56 fused_sum=   58.3us share=1.66% amdahl<=1.0169
+triton_graph_bs64          prefill steps= 1 wall= 129534.6us kern_sum= 126299.3 busy= 126299.3 busy/wall=0.975 fused_n=56 fused_sum= 2929.5us share=2.32% amdahl<=1.0237
+triton_graph_bs64          decode  steps=63 wall=   4833.0us kern_sum=   3967.9 busy=   3967.9 busy/wall=0.816 fused_n=56 fused_sum=   68.4us share=1.69% amdahl<=1.0172
+cuda_graph_bs64            prefill steps= 1 wall= 132591.3us kern_sum= 129845.4 busy= 129845.4 busy/wall=0.979 fused_n=56 fused_sum= 3338.4us share=2.57% amdahl<=1.0264
+cuda_graph_bs64            decode  steps=63 wall=   5080.2us kern_sum=   3986.4 busy=   3986.4 busy/wall=0.792 fused_n=56 fused_sum=   72.5us share=1.76% amdahl<=1.0180
+baseline_eager_bs8_calls   prefill steps= 1 wall=  24901.8us kern_sum=  15699.1 busy=  15699.1 busy/wall=0.630 fused_n=56 fused_sum=  240.7us share=1.53% amdahl<=1.0156 host_in_fused_calls=5022us/step (median/call 89.5us, share 20.2%)
+baseline_eager_bs8_calls   decode  steps=63 wall=  28240.4us kern_sum=   2412.2 busy=   2412.2 busy/wall=0.085 fused_n=56 fused_sum=   58.0us share=2.33% amdahl<=1.0239 host_in_fused_calls=6039us/step (median/call 95.0us, share 21.8%)
+triton_eager_bs8_calls     prefill steps= 1 wall=  28839.3us kern_sum=  15908.5 busy=  15908.5 busy/wall=0.552 fused_n=56 fused_sum=  209.6us share=1.32% amdahl<=1.0134 host_in_fused_calls=4538us/step (median/call 73.4us, share 15.7%)
+triton_eager_bs8_calls     decode  steps=63 wall=  27866.7us kern_sum=   2437.8 busy=   2437.8 busy/wall=0.091 fused_n=56 fused_sum=   65.8us share=2.59% amdahl<=1.0266 host_in_fused_calls=4624us/step (median/call 72.8us, share 16.7%)
+cuda_eager_bs8_calls       prefill steps= 1 wall=  27998.7us kern_sum=  15449.3 busy=  15449.3 busy/wall=0.552 fused_n=56 fused_sum=  213.7us share=1.38% amdahl<=1.0140 host_in_fused_calls=2611us/step (median/call 38.6us, share 9.3%)
+cuda_eager_bs8_calls       decode  steps=63 wall=  23603.8us kern_sum=   2421.1 busy=   2421.1 busy/wall=0.102 fused_n=56 fused_sum=   70.3us share=2.86% amdahl<=1.0294 host_in_fused_calls=2256us/step (median/call 36.1us, share 9.6%)

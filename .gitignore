@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Tooling / caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.swp
+.DS_Store
+.idea/
+.vscode/
+
+# Rebuild output of integration/bootstrap.sh (never commit a full upstream checkout)
+/rebuild/
+/rebuild-*/
+/tmp/
+*.orig
+*.rej
+
+# CUDA extension build output (produced when the CUDA backend is imported)
+*.so
+*.o
+build/
+torch_extensions/
+
+# Local measurement artefacts (large, machine-specific)
+*.nsys-rep
+*.ncu-rep
+*.sqlite

@@ -1,0 +1,1280 @@
+diff --git a/nanovllm/layers/layernorm.py b/nanovllm/layers/layernorm.py
+index 71bf4198fe55ace3c7622b628ecb2b71d13e1c6d..09a75c93af66453080aad61fe481aa3c9387b659 100755
+--- a/nanovllm/layers/layernorm.py
++++ b/nanovllm/layers/layernorm.py
+@@ -1,6 +1,8 @@
+ import torch
+ from torch import nn
+ 
++from nanovllm.layers import nv5_rmsnorm
++
+ 
+ class RMSNorm(nn.Module):
+ 
+@@ -12,6 +14,8 @@ class RMSNorm(nn.Module):
+         super().__init__()
+         self.eps = eps
+         self.weight = nn.Parameter(torch.ones(hidden_size))
++        self._nv5_backend, self._nv5_impl = nv5_rmsnorm.resolve()
++        self._nv5_route = nv5_rmsnorm.route_policy(self._nv5_backend)
+ 
+     @torch.compile
+     def rms_forward(
+@@ -46,5 +50,7 @@ class RMSNorm(nn.Module):
+     ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+         if residual is None:
+             return self.rms_forward(x)
+-        else:
++        elif self._nv5_impl is None or (self._nv5_route is not None and not self._nv5_route(x, residual, self.weight)):
+             return self.add_rms_forward(x, residual)
++        else:
++            return self._nv5_impl(x, residual, self.weight, self.eps)
+diff --git a/nanovllm/layers/nv5_rmsnorm/__init__.py b/nanovllm/layers/nv5_rmsnorm/__init__.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..8bf64d07ae09c4dc5544e14864179e5301093723
+--- /dev/null
++++ b/nanovllm/layers/nv5_rmsnorm/__init__.py
+@@ -0,0 +1,95 @@
++"""Backend selection for the fused residual-add + RMSNorm path (RMSNorm.forward with a residual).
++
++Only the residual branch is dispatched; RMS-only calls (layer-0 input_layernorm, q_norm/k_norm)
++always run the upstream implementation. Selection happens once, at RMSNorm construction; a policy backend
++additionally chooses per call between its impl and the upstream path.
++
++NV5_RMSNORM_BACKEND:
++    unset / "" / "baseline"  upstream compiled add_rms_forward (default; no candidate module is imported)
++    "triton" / "cuda"        N-C candidate; its module is imported on first selection and registers itself
++    "hybrid"                 per-call route policy: the CUDA N-C kernel for the verified prefill envelope,
++                             upstream add_rms_forward otherwise (see hybrid_backend.py)
++    anything else            raise NV5BackendError (no silent fallback)
++
++A route policy returning False is an intentional choice of the upstream path, not an error fallback;
++errors raised by the selected impl propagate.
++
++Test-only reference backends are not selectable here; see nanovllm.layers.nv5_rmsnorm.testing.
++"""
++import importlib
++import os
++from typing import Callable
++
++import torch
++
++ENV_BACKEND = "NV5_RMSNORM_BACKEND"
++BASELINE = "baseline"
++TEST_ONLY_BACKENDS = ("reference_nc", "reference_wrong_c6r")
++
++# fn(x, residual, weight, eps) -> (y, residual_out); outputs are new tensors, inputs are not modified.
++FusedAddRMSNorm = Callable[[torch.Tensor, torch.Tensor, torch.Tensor, float], tuple[torch.Tensor, torch.Tensor]]
++
++# fn(x, residual, weight) -> True to run the backend impl, False to run upstream add_rms_forward.
++RoutePolicy = Callable[[torch.Tensor, torch.Tensor, torch.Tensor], bool]
++
++_REGISTRY: dict[str, FusedAddRMSNorm | None] = {"triton": None, "cuda": None, "hybrid": None}
++_MODULES = {"triton": "nanovllm.layers.nv5_rmsnorm.triton_backend", "cuda": "nanovllm.layers.nv5_rmsnorm.cuda_backend",
++            "hybrid": "nanovllm.layers.nv5_rmsnorm.hybrid_backend"}
++POLICY_BACKENDS = ("hybrid",)
++_POLICIES: dict[str, RoutePolicy] = {}
++
++
++class NV5BackendError(RuntimeError):
++    pass
++
++
++class NV5BackendNotImplementedError(NV5BackendError, NotImplementedError):
++    pass
++
++
++def register_backend(name: str, fn: FusedAddRMSNorm) -> None:
++    if name not in _REGISTRY:
++        raise NV5BackendError(f"cannot register {name!r}; reserved backend names are {sorted(_REGISTRY)}")
++    _REGISTRY[name] = fn
++
++
++def register_policy(name: str, fn: RoutePolicy) -> None:
++    if name not in POLICY_BACKENDS:
++        raise NV5BackendError(f"cannot register a route policy for {name!r}; policy backends are {list(POLICY_BACKENDS)}")
++    _POLICIES[name] = fn
++
++
++def route_policy(name: str) -> RoutePolicy | None:
++    """Return the per-call route policy of a policy backend, None for every other backend."""
++    if name not in POLICY_BACKENDS:
++        return None
++    if name not in _POLICIES:
++        raise NV5BackendNotImplementedError(f"{ENV_BACKEND}={name!r} has no registered route policy")
++    return _POLICIES[name]
++
++
++def selected_backend() -> str:
++    name = os.environ.get(ENV_BACKEND, "")
++    if name in ("", BASELINE):
++        return BASELINE
++    if name in _REGISTRY:
++        return name
++    if name in TEST_ONLY_BACKENDS:
++        raise NV5BackendError(
++            f"{ENV_BACKEND}={name!r} is a test-only backend and cannot be selected through the environment; "
++            f"use nanovllm.layers.nv5_rmsnorm.testing.bind_test_backend")
++    raise NV5BackendError(f"unknown {ENV_BACKEND}={name!r}; expected one of {[BASELINE, *_REGISTRY]}")
++
++
++def resolve() -> tuple[str, FusedAddRMSNorm | None]:
++    """Return (backend_name, impl). impl is None for the upstream baseline path."""
++    name = selected_backend()
++    if name == BASELINE:
++        return name, None
++    if _REGISTRY[name] is None:
++        importlib.import_module(_MODULES[name])
++    fn = _REGISTRY[name]
++    if fn is None:
++        raise NV5BackendNotImplementedError(
++            f"{ENV_BACKEND}={name!r} is reserved but not implemented; no fallback to {BASELINE!r} is performed")
++    return name, fn
+diff --git a/nanovllm/layers/nv5_rmsnorm/_common.py b/nanovllm/layers/nv5_rmsnorm/_common.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..767e27b003910940f0b8e3db0b329aa12d02a74d
+--- /dev/null
++++ b/nanovllm/layers/nv5_rmsnorm/_common.py
+@@ -0,0 +1,23 @@
++"""Input contract shared by the NV5 fused residual-add + RMSNorm candidate backends."""
++import torch
++
++from nanovllm.layers.nv5_rmsnorm import NV5BackendError
++
++SUPPORTED_DTYPES = (torch.bfloat16, torch.float16)
++
++
++def check_inputs(x: torch.Tensor, residual: torch.Tensor, weight: torch.Tensor) -> None:
++    """Raise NV5BackendError for anything outside the supported fused path (no silent fallback)."""
++    if not (x.is_cuda and residual.is_cuda and weight.is_cuda):
++        raise NV5BackendError("x, residual and weight must be CUDA tensors")
++    if x.dtype not in SUPPORTED_DTYPES:
++        raise NV5BackendError(f"unsupported dtype {x.dtype}; only bf16/fp16 are supported (fp32 is rejected)")
++    if residual.dtype != x.dtype or weight.dtype != x.dtype:
++        raise NV5BackendError(f"dtype mismatch: x={x.dtype} residual={residual.dtype} weight={weight.dtype}")
++    if x.dim() != 2 or residual.shape != x.shape or weight.dim() != 1 or weight.shape[0] != x.shape[1]:
++        raise NV5BackendError(f"shape mismatch: expected x=[N,H], residual=[N,H], weight=[H]; got "
++                              f"{tuple(x.shape)}, {tuple(residual.shape)}, {tuple(weight.shape)}")
++    if not (x.is_contiguous() and residual.is_contiguous() and weight.is_contiguous()):
++        raise NV5BackendError("x, residual and weight must be contiguous")
++    if residual.device != x.device or weight.device != x.device:
++        raise NV5BackendError("x, residual and weight must be on the same device")
+diff --git a/nanovllm/layers/nv5_rmsnorm/csrc/nv5_fused_add_rmsnorm.cu b/nanovllm/layers/nv5_rmsnorm/csrc/nv5_fused_add_rmsnorm.cu
+new file mode 100644
+index 0000000000000000000000000000000000000000..f7c1de63b5de08a4d9bd32e71962dd7f35f358a9
+--- /dev/null
++++ b/nanovllm/layers/nv5_rmsnorm/csrc/nv5_fused_add_rmsnorm.cu
+@@ -0,0 +1,178 @@
++// NV5 CUDA candidate: fused residual-add + RMSNorm, N-C contract (nano-vLLM compiled baseline semantics).
++//
++//   s            = fp32(x) + fp32(residual)
++//   residual_out = round_T(s)
++//   inv          = rsqrt(sum(s * s) / H + eps)      statistic AND normalization use the UNROUNDED s
++//   y            = round_T((s * inv) * fp32(w))     no round_T before the weight multiply
++//
++// Re-written from the CUDA Kernel Lab C6 structure (one block per row, warp-shuffle block reduction,
++// 16-byte vector access). Unlike C6 (rounded-residual contract) phase 2 never reads the rounded
++// residual_out: the vector path keeps s in registers; the scalar path recomputes s from x and residual,
++// which is bitwise identical to phase 1. One kernel launch per call.
++#include <ATen/cuda/CUDAContext.h>
++#include <c10/cuda/CUDAGuard.h>
++#include <cuda_bf16.h>
++#include <cuda_fp16.h>
++#include <torch/extension.h>
++
++#include <cstdint>
++
++namespace {
++
++__device__ __forceinline__ float to_f32(__half v) { return __half2float(v); }
++__device__ __forceinline__ float to_f32(__nv_bfloat16 v) { return __bfloat162float(v); }
++template <typename T> __device__ __forceinline__ T from_f32(float v);
++template <> __device__ __forceinline__ __half from_f32<__half>(float v) { return __float2half_rn(v); }
++template <> __device__ __forceinline__ __nv_bfloat16 from_f32<__nv_bfloat16>(float v) { return __float2bfloat16_rn(v); }
++
++constexpr unsigned FULL_MASK = 0xffffffffu;
++
++template <int BLOCK>
++__device__ __forceinline__ float block_sum(float v) {
++  constexpr int NWARPS = BLOCK / 32;
++  __shared__ float s_warp[NWARPS];
++  const int lane = threadIdx.x & 31, wid = threadIdx.x >> 5;
++#pragma unroll
++  for (int o = 16; o > 0; o >>= 1) v += __shfl_down_sync(FULL_MASK, v, o);
++  if (lane == 0) s_warp[wid] = v;
++  __syncthreads();
++  if (wid == 0) {
++    float t = lane < NWARPS ? s_warp[lane] : 0.0f;
++#pragma unroll
++    for (int o = NWARPS / 2; o > 0; o >>= 1) t += __shfl_down_sync(FULL_MASK, t, o);
++    if (lane == 0) s_warp[0] = t;
++  }
++  __syncthreads();
++  return s_warp[0];
++}
++
++template <typename T>
++union Vec16 {
++  uint4 u;
++  T e[8];
++};
++
++// Vector path: H % 8 == 0, 16-byte aligned rows, H / 8 <= BLOCK * ITERS. s cached in registers.
++template <typename T, int BLOCK, int ITERS>
++__global__ void __launch_bounds__(BLOCK) nv5_fused_add_rmsnorm_nc_vec(
++    const T* __restrict__ x, const T* __restrict__ r, const T* __restrict__ w, T* __restrict__ y,
++    T* __restrict__ ro, int H, float eps) {
++  const int64_t base = static_cast<int64_t>(blockIdx.x) * H;
++  const int kv = H / 8;
++  const uint4* xv = reinterpret_cast<const uint4*>(x + base);
++  const uint4* rv = reinterpret_cast<const uint4*>(r + base);
++  const uint4* wv = reinterpret_cast<const uint4*>(w);
++  uint4* yv = reinterpret_cast<uint4*>(y + base);
++  uint4* rov = reinterpret_cast<uint4*>(ro + base);
++  float s[ITERS][8];
++  float acc = 0.0f;
++#pragma unroll
++  for (int it = 0; it < ITERS; ++it) {
++    const int i = threadIdx.x + it * BLOCK;
++    if (i < kv) {
++      Vec16<T> a, b, o;
++      a.u = xv[i];
++      b.u = rv[i];
++#pragma unroll
++      for (int j = 0; j < 8; ++j) {
++        s[it][j] = to_f32(a.e[j]) + to_f32(b.e[j]);
++        o.e[j] = from_f32<T>(s[it][j]);
++        acc += s[it][j] * s[it][j];
++      }
++      rov[i] = o.u;
++    }
++  }
++  const float inv = rsqrtf(block_sum<BLOCK>(acc) / static_cast<float>(H) + eps);
++#pragma unroll
++  for (int it = 0; it < ITERS; ++it) {
++    const int i = threadIdx.x + it * BLOCK;
++    if (i < kv) {
++      Vec16<T> g, o;
++      g.u = wv[i];
++#pragma unroll
++      for (int j = 0; j < 8; ++j) o.e[j] = from_f32<T>((s[it][j] * inv) * to_f32(g.e[j]));
++      yv[i] = o.u;
++    }
++  }
++}
++
++// Scalar path: any H, any alignment. Phase 2 recomputes s = fp32(x) + fp32(r) (bitwise identical).
++template <typename T, int BLOCK>
++__global__ void __launch_bounds__(BLOCK) nv5_fused_add_rmsnorm_nc_scalar(
++    const T* __restrict__ x, const T* __restrict__ r, const T* __restrict__ w, T* __restrict__ y,
++    T* __restrict__ ro, int H, float eps) {
++  const int64_t base = static_cast<int64_t>(blockIdx.x) * H;
++  float acc = 0.0f;
++  for (int i = threadIdx.x; i < H; i += BLOCK) {
++    const float s = to_f32(x[base + i]) + to_f32(r[base + i]);
++    ro[base + i] = from_f32<T>(s);
++    acc += s * s;
++  }
++  const float inv = rsqrtf(block_sum<BLOCK>(acc) / static_cast<float>(H) + eps);
++  for (int i = threadIdx.x; i < H; i += BLOCK) {
++    const float s = to_f32(x[base + i]) + to_f32(r[base + i]);
++    y[base + i] = from_f32<T>((s * inv) * to_f32(w[i]));
++  }
++}
++
++template <typename T, int BLOCK, int ITERS>
++void launch_vec(const at::Tensor& x, const at::Tensor& r, const at::Tensor& w, at::Tensor& y, at::Tensor& ro,
++                int64_t n, int h, float eps, cudaStream_t st) {
++  nv5_fused_add_rmsnorm_nc_vec<T, BLOCK, ITERS><<<n, BLOCK, 0, st>>>(
++      reinterpret_cast<const T*>(x.data_ptr()), reinterpret_cast<const T*>(r.data_ptr()),
++      reinterpret_cast<const T*>(w.data_ptr()), reinterpret_cast<T*>(y.data_ptr()),
++      reinterpret_cast<T*>(ro.data_ptr()), h, eps);
++}
++
++template <typename T>
++void dispatch(const at::Tensor& x, const at::Tensor& r, const at::Tensor& w, at::Tensor& y, at::Tensor& ro,
++              int64_t n, int h, float eps, cudaStream_t st) {
++  auto aligned = [](const at::Tensor& t) { return reinterpret_cast<uintptr_t>(t.data_ptr()) % 16 == 0; };
++  const bool vec_ok = h % 8 == 0 && aligned(x) && aligned(r) && aligned(w) && aligned(y) && aligned(ro);
++  const int kv = h / 8;
++  if (vec_ok && kv <= 128) {
++    launch_vec<T, 128, 1>(x, r, w, y, ro, n, h, eps, st);
++  } else if (vec_ok && kv <= 256) {
++    launch_vec<T, 256, 1>(x, r, w, y, ro, n, h, eps, st);
++  } else if (vec_ok && kv <= 512) {
++    launch_vec<T, 256, 2>(x, r, w, y, ro, n, h, eps, st);
++  } else if (vec_ok && kv <= 1024) {
++    launch_vec<T, 256, 4>(x, r, w, y, ro, n, h, eps, st);
++  } else {
++    nv5_fused_add_rmsnorm_nc_scalar<T, 256><<<n, 256, 0, st>>>(
++        reinterpret_cast<const T*>(x.data_ptr()), reinterpret_cast<const T*>(r.data_ptr()),
++        reinterpret_cast<const T*>(w.data_ptr()), reinterpret_cast<T*>(y.data_ptr()),
++        reinterpret_cast<T*>(ro.data_ptr()), h, eps);
++  }
++}
++
++}  // namespace
++
++std::vector<at::Tensor> fused_add_rms_norm_nc(const at::Tensor& x, const at::Tensor& r, const at::Tensor& w,
++                                              double eps) {
++  TORCH_CHECK(x.is_cuda() && r.is_cuda() && w.is_cuda(), "nv5 cuda: tensors must be CUDA");
++  TORCH_CHECK(x.scalar_type() == at::kBFloat16 || x.scalar_type() == at::kHalf, "nv5 cuda: bf16/fp16 only");
++  TORCH_CHECK(r.scalar_type() == x.scalar_type() && w.scalar_type() == x.scalar_type(), "nv5 cuda: dtype mismatch");
++  TORCH_CHECK(x.dim() == 2 && r.sizes() == x.sizes() && w.dim() == 1 && w.size(0) == x.size(1),
++              "nv5 cuda: expected x=[N,H], residual=[N,H], weight=[H]");
++  TORCH_CHECK(x.is_contiguous() && r.is_contiguous() && w.is_contiguous(), "nv5 cuda: tensors must be contiguous");
++  TORCH_CHECK(x.size(1) <= INT32_MAX, "nv5 cuda: H too large");
++  const at::cuda::OptionalCUDAGuard guard(x.device());
++  auto y = at::empty_like(x);
++  auto ro = at::empty_like(x);
++  const int64_t n = x.size(0);
++  const int h = static_cast<int>(x.size(1));
++  if (n == 0) return {y, ro};
++  cudaStream_t st = at::cuda::getCurrentCUDAStream();
++  if (x.scalar_type() == at::kBFloat16) {
++    dispatch<__nv_bfloat16>(x, r, w, y, ro, n, h, static_cast<float>(eps), st);
++  } else {
++    dispatch<__half>(x, r, w, y, ro, n, h, static_cast<float>(eps), st);
++  }
++  C10_CUDA_KERNEL_LAUNCH_CHECK();
++  return {y, ro};
++}
++
++PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
++  m.def("fused_add_rms_norm_nc", &fused_add_rms_norm_nc, "NV5 N-C fused residual-add + RMSNorm -> (y, residual_out)");
++}
+diff --git a/nanovllm/layers/nv5_rmsnorm/cuda_backend.py b/nanovllm/layers/nv5_rmsnorm/cuda_backend.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..3b197d27bb7458024a069fb172b027068f9e6b32
+--- /dev/null
++++ b/nanovllm/layers/nv5_rmsnorm/cuda_backend.py
+@@ -0,0 +1,27 @@
++"""CUDA candidate for the fused residual-add + RMSNorm path, N-C contract (see csrc/nv5_fused_add_rmsnorm.cu).
++
++The extension is JIT-built with torch.utils.cpp_extension at import time, i.e. when an RMSNorm is
++constructed with NV5_RMSNORM_BACKEND=cuda, which is before model warm-up and CUDA-graph capture.
++Build output goes to TORCH_EXTENSIONS_DIR; CUDA_HOME must point to a CUDA 13 toolkit matching torch.
++"""
++from pathlib import Path
++
++import torch
++from torch.utils.cpp_extension import load
++
++from nanovllm.layers.nv5_rmsnorm import register_backend
++from nanovllm.layers.nv5_rmsnorm._common import check_inputs
++
++_SRC = Path(__file__).resolve().parent / "csrc" / "nv5_fused_add_rmsnorm.cu"
++_ext = load(name="nv5_fused_add_rmsnorm_nc", sources=[str(_SRC)],
++            extra_cflags=["-O3", "-std=c++17"],
++            extra_cuda_cflags=["-O3", "-std=c++17", "--expt-relaxed-constexpr"], verbose=False)
++
++
++def fused_add_rms_norm(x: torch.Tensor, residual: torch.Tensor, weight: torch.Tensor, eps: float):
++    check_inputs(x, residual, weight)
++    y, residual_out = _ext.fused_add_rms_norm_nc(x, residual, weight, float(eps))
++    return y, residual_out
++
++
++register_backend("cuda", fused_add_rms_norm)
+diff --git a/nanovllm/layers/nv5_rmsnorm/hybrid_backend.py b/nanovllm/layers/nv5_rmsnorm/hybrid_backend.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..e471a36eac6fdb0345f44efddeb53e27afb2e602
+--- /dev/null
++++ b/nanovllm/layers/nv5_rmsnorm/hybrid_backend.py
+@@ -0,0 +1,39 @@
++"""Workload-aware hybrid for the fused residual-add + RMSNorm path.
++
++Runs the CUDA N-C kernel (cuda_backend) only inside the envelope verified in NV5-P2: prefill, bf16, H=1024,
++1024 <= N <= 4096 rows, 2-D contiguous, 16-byte aligned. Every other call, in particular every decode step and
++anything executed while a CUDA graph is being captured, runs the upstream compiled add_rms_forward.
++
++The phase signal is nano's own step context (nanovllm.utils.context), the same one Attention reads:
++ModelRunner.prepare_prefill sets is_prefill=True, prepare_decode and capture_cudagraph set it False, and run()
++resets it after each step. Graph replay does not execute Python, so decode graphs contain whatever was chosen
++at capture time, which is always the upstream path.
++"""
++import torch
++
++from nanovllm.layers.nv5_rmsnorm import register_backend, register_policy
++from nanovllm.layers.nv5_rmsnorm.cuda_backend import fused_add_rms_norm
++from nanovllm.utils.context import get_context
++
++CUDA_DTYPE = torch.bfloat16
++CUDA_HIDDEN = 1024
++CUDA_MIN_ROWS = 1024
++CUDA_MAX_ROWS = 4096
++
++
++def use_cuda(x: torch.Tensor, residual: torch.Tensor, weight: torch.Tensor) -> bool:
++    if not get_context().is_prefill or torch.cuda.is_current_stream_capturing():
++        return False
++    if x.dim() != 2 or x.dtype != CUDA_DTYPE or x.shape[1] != CUDA_HIDDEN or not CUDA_MIN_ROWS <= x.shape[0] <= CUDA_MAX_ROWS:
++        return False
++    if residual.dtype != CUDA_DTYPE or weight.dtype != CUDA_DTYPE or residual.shape != x.shape or weight.shape != (CUDA_HIDDEN,):
++        return False
++    if not (x.is_cuda and residual.device == x.device and weight.device == x.device):
++        return False
++    if not (x.is_contiguous() and residual.is_contiguous() and weight.is_contiguous()):
++        return False
++    return x.data_ptr() % 16 == 0 and residual.data_ptr() % 16 == 0 and weight.data_ptr() % 16 == 0
++
++
++register_backend("hybrid", fused_add_rms_norm)
++register_policy("hybrid", use_cuda)
+diff --git a/nanovllm/layers/nv5_rmsnorm/reference.py b/nanovllm/layers/nv5_rmsnorm/reference.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..aa9a75e182d4d7c70cea173f70265b4252f9d7e2
+--- /dev/null
++++ b/nanovllm/layers/nv5_rmsnorm/reference.py
+@@ -0,0 +1,40 @@
++"""Pure-torch contract references for the fused residual-add + RMSNorm path (test-only).
++
++Both use an fp64 reduction so that they are independent of the baseline's reduction order.
++T is the input dtype (bf16 / fp16); fp32 input is rejected.
++
++reference_nc          N-C  (U,U,N): statistic and normalization use the unrounded fp32 sum,
++                                    single final rounding after an fp32 weight multiply.
++reference_wrong_c6r   C6-R (R,R,N): statistic and normalization use round_T(sum) (deliberately
++                                    wrong for nano; used only as a calibration negative control).
++"""
++import torch
++
++_DTYPES = (torch.bfloat16, torch.float16)
++
++
++def _check(x: torch.Tensor, residual: torch.Tensor, weight: torch.Tensor) -> None:
++    if x.dtype not in _DTYPES:
++        raise TypeError(f"reference backends support bf16/fp16 only, got {x.dtype}")
++    if residual.dtype != x.dtype or weight.dtype != x.dtype:
++        raise TypeError(f"dtype mismatch: x={x.dtype} residual={residual.dtype} weight={weight.dtype}")
++    if residual.shape != x.shape or weight.shape != x.shape[-1:]:
++        raise ValueError(f"shape mismatch: x={tuple(x.shape)} residual={tuple(residual.shape)} weight={tuple(weight.shape)}")
++
++
++def _normalize(src64: torch.Tensor, weight: torch.Tensor, eps: float, dtype: torch.dtype) -> torch.Tensor:
++    ms = (src64 * src64).mean(dim=-1, keepdim=True)
++    n32 = (src64 * torch.rsqrt(ms + eps)).float()
++    return (n32 * weight.float()).to(dtype)
++
++
++def reference_nc(x: torch.Tensor, residual: torch.Tensor, weight: torch.Tensor, eps: float):
++    _check(x, residual, weight)
++    s32 = x.float() + residual.float()
++    return _normalize(s32.double(), weight, eps, x.dtype), s32.to(x.dtype)
++
++
++def reference_wrong_c6r(x: torch.Tensor, residual: torch.Tensor, weight: torch.Tensor, eps: float):
++    _check(x, residual, weight)
++    r_t = (x.float() + residual.float()).to(x.dtype)
++    return _normalize(r_t.double(), weight, eps, x.dtype), r_t
+diff --git a/nanovllm/layers/nv5_rmsnorm/testing.py b/nanovllm/layers/nv5_rmsnorm/testing.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..c8a7244f9b6c73b5f1572c8d24780d05cc2165e8
+--- /dev/null
++++ b/nanovllm/layers/nv5_rmsnorm/testing.py
+@@ -0,0 +1,32 @@
++"""Test-only entry point for binding reference backends onto an already-built model.
++
++Never used by the inference path. Requires NV5_RMSNORM_ENABLE_TEST_BACKENDS=1 as an explicit switch.
++"""
++import os
++
++from torch import nn
++
++from nanovllm.layers.layernorm import RMSNorm
++from nanovllm.layers.nv5_rmsnorm import BASELINE, NV5BackendError
++from nanovllm.layers.nv5_rmsnorm.reference import reference_nc, reference_wrong_c6r
++
++ENV_ENABLE = "NV5_RMSNORM_ENABLE_TEST_BACKENDS"
++TEST_BACKENDS = {"reference_nc": reference_nc, "reference_wrong_c6r": reference_wrong_c6r}
++
++
++def bind_test_backend(model: nn.Module, name: str) -> int:
++    """Rebind the fused-path impl of every RMSNorm in `model`; returns the number of modules bound."""
++    if os.environ.get(ENV_ENABLE) != "1":
++        raise NV5BackendError(f"test backends are disabled; set {ENV_ENABLE}=1 in a test harness")
++    if name == BASELINE:
++        impl = None
++    elif name in TEST_BACKENDS:
++        impl = TEST_BACKENDS[name]
++    else:
++        raise NV5BackendError(f"unknown test backend {name!r}; expected one of {[BASELINE, *TEST_BACKENDS]}")
++    n = 0
++    for m in model.modules():
++        if isinstance(m, RMSNorm):
++            m._nv5_backend, m._nv5_impl, m._nv5_route = name, impl, None
++            n += 1
++    return n
+diff --git a/nanovllm/layers/nv5_rmsnorm/triton_backend.py b/nanovllm/layers/nv5_rmsnorm/triton_backend.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..403b385293a274fc66061ead66c5540c5bbc01bf
+--- /dev/null
++++ b/nanovllm/layers/nv5_rmsnorm/triton_backend.py
+@@ -0,0 +1,52 @@
++"""Triton candidate for the fused residual-add + RMSNorm path, N-C contract.
++
++    s   = fp32(x) + fp32(residual)
++    residual_out = round_T(s)
++    inv = rsqrt(sum(s * s) / H + eps)        statistic and normalization use the unrounded s
++    y   = round_T((s * inv) * fp32(weight))  no rounding to T before the weight multiply
++
++One program per row; the whole row is held in registers (BLOCK = next_pow2(H), masked tail).
++"""
++import torch
++import triton
++import triton.language as tl
++from triton.language.extra import libdevice
++
++from nanovllm.layers.nv5_rmsnorm import register_backend
++from nanovllm.layers.nv5_rmsnorm._common import check_inputs
++
++
++@triton.jit
++def _nv5_fused_add_rmsnorm_nc(x_ptr, r_ptr, w_ptr, y_ptr, ro_ptr, eps, H: tl.constexpr, BLOCK: tl.constexpr):
++    row = tl.program_id(0).to(tl.int64)
++    offs = tl.arange(0, BLOCK)
++    mask = offs < H
++    base = row * H
++    x = tl.load(x_ptr + base + offs, mask=mask, other=0.0).to(tl.float32)
++    r = tl.load(r_ptr + base + offs, mask=mask, other=0.0).to(tl.float32)
++    s = x + r
++    tl.store(ro_ptr + base + offs, s.to(ro_ptr.dtype.element_ty), mask=mask)
++    inv = libdevice.rsqrt(tl.sum(s * s, axis=0) / H + eps)
++    w = tl.load(w_ptr + offs, mask=mask, other=0.0).to(tl.float32)
++    y = (s * inv) * w
++    tl.store(y_ptr + base + offs, y.to(y_ptr.dtype.element_ty), mask=mask)
++
++
++def _num_warps(block: int) -> int:
++    return max(1, min(16, block // 256))
++
++
++def fused_add_rms_norm(x: torch.Tensor, residual: torch.Tensor, weight: torch.Tensor, eps: float):
++    check_inputs(x, residual, weight)
++    n, h = x.shape
++    y = torch.empty_like(x)
++    residual_out = torch.empty_like(x)
++    if n == 0:
++        return y, residual_out
++    block = triton.next_power_of_2(h)
++    _nv5_fused_add_rmsnorm_nc[(n,)](x, residual, weight, y, residual_out, eps, H=h, BLOCK=block,
++                                    num_warps=_num_warps(block))
++    return y, residual_out
++
++
++register_backend("triton", fused_add_rms_norm)
+diff --git a/nv5/tests/test_backends.py b/nv5/tests/test_backends.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..8513e95b761a394efaa881c583f9e54bef8a8561
+--- /dev/null
++++ b/nv5/tests/test_backends.py
+@@ -0,0 +1,99 @@
++#!/usr/bin/env python
++"""Functional tests for the N-C candidate backends (triton, cuda).
++
++Checks per backend: residual_out bitwise equal to round_T(fp32 x + fp32 r); y within 1 ULP / 1e-3 of the
++fp64-statistic N-C reference (reference_nc); memory semantics; fail-loud input validation; CUDA-graph
++replay bitwise equal to eager. The full pre-registered gate matrix lives outside the repository.
++
++Run: source env/activate.sh && python nv5/tests/test_backends.py [triton|cuda ...]   (from the nano-vllm root)
++"""
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
++
++import torch  # noqa: E402
++
++from nanovllm.layers import nv5_rmsnorm  # noqa: E402
++from nanovllm.layers.nv5_rmsnorm import NV5BackendError  # noqa: E402
++from nanovllm.layers.nv5_rmsnorm.reference import reference_nc  # noqa: E402
++
++RESULTS = []
++
++
++def check(name, cond, detail=""):
++    RESULTS.append((name, bool(cond)))
++    print(f"{'PASS' if cond else 'FAIL'}  {name}  {detail}")
++
++
++def ordered(t):
++    i = t.contiguous().view(torch.int16).to(torch.int32) & 0xFFFF
++    return torch.where(i >= 0x8000, -(i & 0x7FFF), i)
++
++
++def load(name):
++    if nv5_rmsnorm._REGISTRY[name] is None:
++        __import__(nv5_rmsnorm._MODULES[name])
++    return nv5_rmsnorm._REGISTRY[name]
++
++
++def raises(fn):
++    try:
++        fn()
++    except NV5BackendError as e:
++        return True, repr(e)[:120]
++    except Exception as e:  # noqa: BLE001
++        return False, f"wrong exception {e!r}"[:120]
++    return False, "no exception"
++
++
++def test_backend(name):
++    fn = load(name)
++    g = torch.Generator(device="cuda").manual_seed(7)
++    for dt in (torch.bfloat16, torch.float16):
++        for n, h in ((1, 1024), (8, 1024), (1379, 1024), (33, 1000), (16, 4096)):
++            x = torch.randn(n, h, device="cuda", generator=g).to(dt)
++            r = (4 * torch.randn(n, h, device="cuda", generator=g)).to(dt)
++            w = (1 + 0.25 * torch.randn(h, device="cuda", generator=g)).to(dt)
++            x0, r0, w0 = x.clone(), r.clone(), w.clone()
++            y, ro = fn(x, r, w, 1e-6)
++            yr, _ = reference_nc(x, r, w, 1e-6)
++            d = (ordered(y) - ordered(yr)).abs()
++            tag = f"{name} {str(dt)[6:]} N={n} H={h}"
++            check(f"{tag} residual_out bitwise", torch.equal(ro, (x.float() + r.float()).to(dt)))
++            check(f"{tag} y vs N-C reference", int(d.max()) <= 1 and (d > 0).float().mean().item() <= 1e-3,
++                  f"frac={(d > 0).float().mean().item():.1e} max_ulp={int(d.max())}")
++            ptrs = {x.data_ptr(), r.data_ptr(), w.data_ptr()}
++            check(f"{tag} memory semantics", torch.equal(x, x0) and torch.equal(r, r0) and torch.equal(w, w0)
++                  and y.data_ptr() not in ptrs and ro.data_ptr() not in ptrs and y.data_ptr() != ro.data_ptr()
++                  and y.is_contiguous() and ro.is_contiguous() and y.dtype == ro.dtype == dt and y.shape == x.shape)
++    x = torch.randn(8, 1024, device="cuda", dtype=torch.bfloat16)
++    w = torch.ones(1024, device="cuda", dtype=torch.bfloat16)
++    bad = {"fp32": (x.float(), x.float(), w.float()), "dtype mismatch": (x, x.half(), w),
++           "non-contiguous x": (torch.randn(1024, 8, device="cuda", dtype=torch.bfloat16).t(), x, w),
++           "3-D x": (x.view(2, 4, 1024), x.view(2, 4, 1024), w), "weight size": (x, x, w[:512]),
++           "cpu tensors": (x.cpu(), x.cpu(), w.cpu())}
++    for what, args in bad.items():
++        ok, d = raises(lambda: fn(*args, 1e-6))
++        check(f"{name} fail-loud: {what}", ok, d)
++    r = torch.randn_like(x)
++    y_e, ro_e = fn(x, r, w, 1e-6)
++    torch.cuda.synchronize()
++    graph = torch.cuda.CUDAGraph()
++    with torch.cuda.graph(graph):
++        y_g, ro_g = fn(x, r, w, 1e-6)
++    graph.replay()
++    torch.cuda.synchronize()
++    check(f"{name} CUDA graph replay bitwise equal to eager", torch.equal(y_g, y_e) and torch.equal(ro_g, ro_e))
++
++
++def main():
++    for name in sys.argv[1:] or ["triton", "cuda"]:
++        test_backend(name)
++    n_fail = sum(not ok for _, ok in RESULTS)
++    print(f"TOTAL {len(RESULTS)} checks, {len(RESULTS) - n_fail} PASS, {n_fail} FAIL")
++    return 0 if n_fail == 0 else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/nv5/tests/test_dispatch.py b/nv5/tests/test_dispatch.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..f413838102a3cab3614783f471b72759a5fb742c
+--- /dev/null
++++ b/nv5/tests/test_dispatch.py
+@@ -0,0 +1,152 @@
++#!/usr/bin/env python
++"""NV5 dispatch framework and reference-backend unit tests.
++
++Run: source env/activate.sh && python nv5/tests/test_dispatch.py   (from the nano-vllm root)
++"""
++import os
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
++
++import torch  # noqa: E402
++
++from nanovllm.layers import nv5_rmsnorm  # noqa: E402
++from nanovllm.layers.layernorm import RMSNorm  # noqa: E402
++from nanovllm.layers.nv5_rmsnorm import NV5BackendError, NV5BackendNotImplementedError  # noqa: E402
++from nanovllm.layers.nv5_rmsnorm import testing as nv5_testing  # noqa: E402
++from nanovllm.layers.nv5_rmsnorm.reference import reference_nc, reference_wrong_c6r  # noqa: E402
++
++RESULTS = []
++
++
++def check(name, cond, detail=""):
++    RESULTS.append((name, bool(cond)))
++    print(f"{'PASS' if cond else 'FAIL'}  {name}  {detail}")
++
++
++def with_env(**kw):
++    class Ctx:
++        def __enter__(self):
++            self.old = {k: os.environ.get(k) for k in kw}
++            for k, v in kw.items():
++                if v is None:
++                    os.environ.pop(k, None)
++                else:
++                    os.environ[k] = v
++
++        def __exit__(self, *a):
++            for k, v in self.old.items():
++                if v is None:
++                    os.environ.pop(k, None)
++                else:
++                    os.environ[k] = v
++    return Ctx()
++
++
++def raises(exc, fn):
++    try:
++        fn()
++    except exc as e:
++        return True, repr(e)
++    except Exception as e:  # noqa: BLE001
++        return False, f"wrong exception {e!r}"
++    return False, "no exception"
++
++
++def ordered(t):
++    i = t.contiguous().view(torch.int16).to(torch.int32) & 0xFFFF
++    return torch.where(i >= 0x8000, -(i & 0x7FFF), i)
++
++
++def test_selection():
++    for val in (None, "", "baseline"):
++        with with_env(NV5_RMSNORM_BACKEND=val):
++            m = RMSNorm(64)
++            check(f"env={val!r} -> baseline", m._nv5_backend == "baseline" and m._nv5_impl is None)
++    for val in ("Baseline", "foo", "reference", " baseline"):
++        with with_env(NV5_RMSNORM_BACKEND=val):
++            ok, d = raises(NV5BackendError, lambda: RMSNorm(64))
++            check(f"env={val!r} unknown -> NV5BackendError", ok and "unknown" in d, d)
++    for val in nv5_rmsnorm.TEST_ONLY_BACKENDS:
++        with with_env(NV5_RMSNORM_BACKEND=val):
++            ok, d = raises(NV5BackendError, lambda: RMSNorm(64))
++            check(f"env={val!r} test-only -> NV5BackendError", ok and "test-only" in d, d)
++    for val in ("triton", "cuda"):
++        for fb in (None, "1"):
++            with with_env(NV5_RMSNORM_BACKEND=val, NV5_RMSNORM_ALLOW_FALLBACK=fb):
++                m = RMSNorm(64)
++                check(f"env={val!r} ALLOW_FALLBACK={fb!r} -> registered candidate bound",
++                      m._nv5_backend == val and m._nv5_impl is not None and m._nv5_impl is nv5_rmsnorm._REGISTRY[val])
++    saved = dict(nv5_rmsnorm._REGISTRY), dict(nv5_rmsnorm._MODULES)
++    try:
++        nv5_rmsnorm._REGISTRY["triton"] = None
++        nv5_rmsnorm._MODULES["triton"] = "nanovllm.layers.nv5_rmsnorm._common"  # imports but never registers
++        with with_env(NV5_RMSNORM_BACKEND="triton", NV5_RMSNORM_ALLOW_FALLBACK="1"):
++            ok, d = raises(NV5BackendNotImplementedError, lambda: RMSNorm(64))
++            check("reserved backend whose module does not register -> NotImplemented (no fallback)", ok, d)
++    finally:
++        nv5_rmsnorm._REGISTRY.update(saved[0])
++        nv5_rmsnorm._MODULES.update(saved[1])
++    ok, d = raises(NV5BackendError, lambda: nv5_rmsnorm.register_backend("reference_nc", reference_nc))
++    check("register_backend rejects non-reserved names", ok, d)
++
++
++def test_test_only_binding():
++    model = torch.nn.Sequential(RMSNorm(64), RMSNorm(64))
++    with with_env(NV5_RMSNORM_ENABLE_TEST_BACKENDS=None):
++        ok, d = raises(NV5BackendError, lambda: nv5_testing.bind_test_backend(model, "reference_nc"))
++        check("bind_test_backend requires explicit enable switch", ok, d)
++    with with_env(NV5_RMSNORM_ENABLE_TEST_BACKENDS="1"):
++        n = nv5_testing.bind_test_backend(model, "reference_nc")
++        check("bind reference_nc", n == 2 and all(m._nv5_impl is reference_nc for m in model))
++        ok, d = raises(NV5BackendError, lambda: nv5_testing.bind_test_backend(model, "triton"))
++        check("bind rejects non-test names", ok, d)
++        nv5_testing.bind_test_backend(model, "baseline")
++        check("bind baseline restores upstream path", all(m._nv5_impl is None for m in model))
++
++
++def test_reference_semantics():
++    g = torch.Generator(device="cuda").manual_seed(1)
++    for dt in (torch.bfloat16, torch.float16):
++        x = torch.randn(64, 1024, device="cuda", generator=g).to(dt)
++        r = (4 * torch.randn(64, 1024, device="cuda", generator=g)).to(dt)
++        w = (1 + 0.25 * torch.randn(1024, device="cuda", generator=g)).to(dt)
++        x0, r0, w0 = x.clone(), r.clone(), w.clone()
++        m = RMSNorm(1024).to(device="cuda", dtype=dt)
++        with torch.no_grad():
++            m.weight.copy_(w)
++        with torch.inference_mode():
++            yb, rob = m(x, r)
++        for name, fn in (("reference_nc", reference_nc), ("reference_wrong_c6r", reference_wrong_c6r)):
++            y, ro = fn(x, r, w, 1e-6)
++            ptrs = {x.data_ptr(), r.data_ptr(), w.data_ptr()}
++            check(f"{name} {dt} memory semantics",
++                  torch.equal(x, x0) and torch.equal(r, r0) and torch.equal(w, w0)
++                  and y.data_ptr() not in ptrs and ro.data_ptr() not in ptrs and y.data_ptr() != ro.data_ptr()
++                  and y.is_contiguous() and ro.is_contiguous() and y.dtype == dt and ro.dtype == dt)
++            check(f"{name} {dt} residual_out == round_T(fp32 sum) bitwise",
++                  torch.equal(ro, (x.float() + r.float()).to(dt)))
++            d = (ordered(y) - ordered(yb)).abs()
++            frac, mu = (d > 0).float().mean().item(), int(d.max())
++            if name == "reference_nc":
++                check(f"{name} {dt} vs baseline within OP-Y noise (ulp<=1, frac<=1e-3)", mu <= 1 and frac <= 1e-3,
++                      f"frac={frac:.2e} max_ulp={mu}")
++            else:
++                check(f"{name} {dt} differs from baseline (negative control, frac>0.1)", frac > 0.1,
++                      f"frac={frac:.2e} max_ulp={mu}")
++        ok, d = raises(TypeError, lambda: reference_nc(x.float(), r.float(), w.float(), 1e-6))
++        check(f"reference rejects fp32 ({dt} case)", ok, d)
++
++
++def main():
++    test_selection()
++    test_test_only_binding()
++    test_reference_semantics()
++    n_fail = sum(not ok for _, ok in RESULTS)
++    print(f"TOTAL {len(RESULTS)} checks, {len(RESULTS) - n_fail} PASS, {n_fail} FAIL")
++    return 0 if n_fail == 0 else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/nv5/tests/test_hybrid.py b/nv5/tests/test_hybrid.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..d19e937e7ddc8af2067c24e79b8f10ae7ab9bed8
+--- /dev/null
++++ b/nv5/tests/test_hybrid.py
+@@ -0,0 +1,261 @@
++#!/usr/bin/env python
++"""Tests for the workload-aware hybrid backend (NV5_RMSNORM_BACKEND=hybrid).
++
++Checks: selection and policy registration; the route-policy truth table (phase, rows, dtype, H, layout,
++alignment, CUDA-graph capture); module-level execution path and numerics (CUDA path bitwise equal to the cuda
++backend and within OP-R/OP-B of the baseline, upstream path bitwise equal to a baseline module); RMS-only calls
++untouched; errors of the selected CUDA path propagate; a capture under a prefill context records no candidate node.
++
++Run: source env/activate.sh && python nv5/tests/test_hybrid.py   (from the nano-vllm root)
++"""
++import collections
++import ctypes
++import os
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
++
++import torch  # noqa: E402
++
++from nanovllm.layers import nv5_rmsnorm  # noqa: E402
++from nanovllm.layers.layernorm import RMSNorm  # noqa: E402
++from nanovllm.layers.nv5_rmsnorm import NV5BackendError, NV5BackendNotImplementedError  # noqa: E402
++from nanovllm.utils.context import reset_context, set_context  # noqa: E402
++
++RESULTS = []
++EPS = 1e-6
++
++
++def check(name, cond, detail=""):
++    RESULTS.append((name, bool(cond)))
++    print(f"{'PASS' if cond else 'FAIL'}  {name}  {detail}")
++
++
++def ordered(t):
++    i = t.contiguous().view(torch.int16).to(torch.int32) & 0xFFFF
++    return torch.where(i >= 0x8000, -(i & 0x7FFF), i)
++
++
++def make(backend, h=1024, dt=torch.bfloat16, w=None):
++    old = os.environ.get("NV5_RMSNORM_BACKEND")
++    os.environ["NV5_RMSNORM_BACKEND"] = backend
++    try:
++        m = RMSNorm(h, eps=EPS).to(device="cuda", dtype=dt)
++    finally:
++        if old is None:
++            os.environ.pop("NV5_RMSNORM_BACKEND")
++        else:
++            os.environ["NV5_RMSNORM_BACKEND"] = old
++    if w is not None:
++        with torch.no_grad():
++            m.weight.copy_(w)
++    return m
++
++
++def inputs(n, h=1024, dt=torch.bfloat16, seed=0):
++    g = torch.Generator(device="cuda").manual_seed(seed)
++    x = torch.randn(n, h, device="cuda", generator=g).to(dt)
++    r = (4 * torch.randn(n, h, device="cuda", generator=g)).to(dt)
++    w = (1 + 0.25 * torch.randn(h, device="cuda", generator=g)).to(dt)
++    return x, r, w
++
++
++def prefill_ctx():
++    set_context(True)
++
++
++def test_selection():
++    from nanovllm.layers.nv5_rmsnorm import hybrid_backend
++    m = make("hybrid")
++    check("hybrid selected: backend id, impl is the cuda backend function, route policy bound",
++          m._nv5_backend == "hybrid" and m._nv5_impl is nv5_rmsnorm._REGISTRY["cuda"] is nv5_rmsnorm._REGISTRY["hybrid"]
++          and m._nv5_route is hybrid_backend.use_cuda)
++    for b in ("baseline", "triton", "cuda"):
++        mb = make(b)
++        check(f"{b}: no route policy", mb._nv5_route is None and nv5_rmsnorm.route_policy(b) is None)
++    try:
++        nv5_rmsnorm.register_policy("cuda", hybrid_backend.use_cuda)
++        ok, d = False, "no exception"
++    except NV5BackendError as e:
++        ok, d = True, repr(e)
++    check("register_policy rejects non-policy backends", ok, d)
++    saved = nv5_rmsnorm._POLICIES.pop("hybrid")
++    try:
++        nv5_rmsnorm.route_policy("hybrid")
++        ok, d = False, "no exception"
++    except NV5BackendNotImplementedError as e:
++        ok, d = True, repr(e)
++    finally:
++        nv5_rmsnorm._POLICIES["hybrid"] = saved
++    check("hybrid without a registered policy fails loud", ok, d)
++
++
++def test_policy_table():
++    from nanovllm.layers.nv5_rmsnorm.hybrid_backend import use_cuda
++    w = torch.ones(1024, device="cuda", dtype=torch.bfloat16)
++    prefill_ctx()
++    for n in (1024, 1379, 2048, 4096):
++        x = torch.empty(n, 1024, device="cuda", dtype=torch.bfloat16)
++        check(f"prefill bf16 H=1024 N={n} -> cuda", use_cuda(x, torch.empty_like(x), w))
++    for n in (1, 8, 64, 512, 1023, 4097, 11032, 16384):
++        x = torch.empty(n, 1024, device="cuda", dtype=torch.bfloat16)
++        check(f"prefill bf16 H=1024 N={n} -> baseline", not use_cuda(x, torch.empty_like(x), w))
++    x = torch.empty(1379, 1024, device="cuda", dtype=torch.bfloat16)
++    cases = {
++        "fp16": (x.half(), x.half(), w.half()),
++        "fp32": (x.float(), x.float(), w.float()),
++        "H=896": (x[:, :896].contiguous(), x[:, :896].contiguous(), w[:896].contiguous()),
++        "H=2048": (torch.empty(1379, 2048, device="cuda", dtype=torch.bfloat16),) * 2 + (torch.ones(2048, device="cuda", dtype=torch.bfloat16),),
++        "non-contiguous x": (torch.empty(2048, 1379, device="cuda", dtype=torch.bfloat16).t()[:, :1024], x, w),
++        "misaligned x (2-byte offset)": (torch.empty(1379 * 1024 + 1, device="cuda", dtype=torch.bfloat16)[1:].view(1379, 1024), x, w),
++        "residual shape mismatch": (x, x[:1378], w),
++        "weight dtype fp32": (x, x, w.float()),
++        "3-D x": (x.view(1379, 8, 128), x.view(1379, 8, 128), w),
++        "cpu tensors": (x.cpu(), x.cpu(), w.cpu()),
++    }
++    for what, args in cases.items():
++        check(f"prefill N=1379 {what} -> baseline", not use_cuda(*args))
++    set_context(False)
++    for n in (8, 512, 1379, 4096):
++        xd = torch.empty(n, 1024, device="cuda", dtype=torch.bfloat16)
++        check(f"decode context N={n} -> baseline", not use_cuda(xd, torch.empty_like(xd), w))
++    reset_context()
++    check("reset (default) context N=1379 -> baseline", not use_cuda(x, torch.empty_like(x), w))
++
++
++def test_module_paths():
++    calls = collections.Counter()
++    x, r, w = inputs(1379, seed=1)
++    xs, rs, _ = inputs(8, seed=2)
++    hy, base = make("hybrid", w=w), make("baseline", w=w)
++    real = hy._nv5_impl
++
++    def counted(*a):
++        calls["cuda"] += 1
++        return real(*a)
++    hy._nv5_impl = counted
++    cuda_fn = nv5_rmsnorm._REGISTRY["cuda"]
++    with torch.inference_mode():
++        for ctx, xx, rr, exp in (("prefill", x, r, "cuda"), ("decode", x, r, "baseline"),
++                                 ("prefill", xs, rs, "baseline"), ("decode", xs, rs, "baseline")):
++            set_context(ctx == "prefill")
++            x0, r0 = xx.clone(), rr.clone()
++            before = calls["cuda"]
++            y, ro = hy(xx, rr)
++            ran = "cuda" if calls["cuda"] == before + 1 else "baseline"
++            yb, rob = base(xx, rr)
++            tag = f"module {ctx} N={xx.shape[0]}"
++            check(f"{tag} executed path == {exp}", ran == exp, f"ran={ran}")
++            check(f"{tag} inputs unchanged", torch.equal(xx, x0) and torch.equal(rr, r0))
++            if exp == "cuda":
++                yc, roc = cuda_fn(xx, rr, w, EPS)
++                d = (ordered(y) - ordered(yb)).abs()
++                check(f"{tag} bitwise equal to cuda backend", torch.equal(y, yc) and torch.equal(ro, roc))
++                check(f"{tag} OP-R residual_out == round_T(fp32 sum)", torch.equal(ro, (xx.float() + rr.float()).to(xx.dtype)))
++                check(f"{tag} OP-B vs baseline (<=1 ULP, <=2e-3)", int(d.max()) <= 1 and (d > 0).float().mean().item() <= 2e-3,
++                      f"frac={(d > 0).float().mean().item():.1e} max_ulp={int(d.max())}")
++            else:
++                check(f"{tag} bitwise equal to baseline module", torch.equal(y, yb) and torch.equal(ro, rob))
++        prefill_ctx()
++        before = calls["cuda"]
++        check("RMS-only (no residual) under prefill context: bitwise equal to baseline, impl not called",
++              torch.equal(hy(x), base(x)) and calls["cuda"] == before)
++        xq = torch.randn(1379, 16, 128, device="cuda", dtype=torch.bfloat16)
++        hq, bq = make("hybrid", h=128), make("baseline", h=128)
++        check("RMS-only 3-D q/k layout under prefill context: bitwise equal to baseline", torch.equal(hq(xq), bq(xq)))
++    reset_context()
++
++
++def test_errors_propagate():
++    x, r, w = inputs(1379, seed=3)
++    hy = make("hybrid", w=w)
++
++    def boom(*a):
++        raise NV5BackendError("selected CUDA path failed (test)")
++    hy._nv5_impl = boom
++    with torch.inference_mode():
++        prefill_ctx()
++        try:
++            hy(x, r)
++            ok, d = False, "no exception (silent fallback?)"
++        except NV5BackendError as e:
++            ok, d = True, repr(e)
++        check("error in the selected CUDA path propagates (no fallback)", ok, d)
++        set_context(False)
++        y, _ = hy(x, r)
++        check("decode context never calls the CUDA impl", y.shape == x.shape)
++    reset_context()
++
++
++def graph_kernel_names(graph):
++    cu = ctypes.CDLL("libcuda.so.1")
++
++    class KNP(ctypes.Structure):
++        _fields_ = [("func", ctypes.c_void_p)] + [(f, ctypes.c_uint) for f in ("gx", "gy", "gz", "bx", "by", "bz", "smem")] + \
++                   [("kp", ctypes.c_void_p), ("extra", ctypes.c_void_p), ("kern", ctypes.c_void_p), ("ctx", ctypes.c_void_p)]
++    raw = ctypes.c_void_p(graph.raw_cuda_graph())
++    n = ctypes.c_size_t(0)
++    cu.cuGraphGetNodes(raw, None, ctypes.byref(n))
++    arr = (ctypes.c_void_p * n.value)()
++    cu.cuGraphGetNodes(raw, arr, ctypes.byref(n))
++    names = []
++    for nd in arr:
++        t = ctypes.c_int(-1)
++        cu.cuGraphNodeGetType(ctypes.c_void_p(nd), ctypes.byref(t))
++        if t.value != 0:
++            names.append(f"<type {t.value}>")
++            continue
++        p = KNP()
++        cu.cuGraphKernelNodeGetParams_v2(ctypes.c_void_p(nd), ctypes.byref(p))
++        nm = ctypes.c_char_p()
++        if p.func:
++            cu.cuFuncGetName(ctypes.byref(nm), ctypes.c_void_p(p.func))
++        else:
++            cu.cuKernelGetName(ctypes.byref(nm), ctypes.c_void_p(p.kern))
++        names.append((nm.value or b"?").decode())
++    return names
++
++
++def test_graph_capture_under_prefill_context():
++    x, r, w = inputs(1379, seed=4)
++    hy, base = make("hybrid", w=w), make("baseline", w=w)
++    calls = collections.Counter()
++    real = hy._nv5_impl
++
++    def counted(*a):
++        calls["cuda"] += 1
++        return real(*a)
++    hy._nv5_impl = counted
++    with torch.inference_mode():
++        set_context(False)
++        yb, rob = base(x, r)
++        hy(x, r)
++        torch.cuda.synchronize()
++        prefill_ctx()
++        graph = torch.cuda.CUDAGraph(keep_graph=True)
++        with torch.cuda.graph(graph):
++            y, ro = hy(x, r)
++        graph.replay()
++        torch.cuda.synchronize()
++    reset_context()
++    names = graph_kernel_names(graph)
++    check("capture under prefill context: CUDA impl not called", calls["cuda"] == 0, f"calls={calls['cuda']}")
++    check("capture under prefill context: 0 candidate nodes, 1 Inductor node",
++          sum("nv5_fused_add_rmsnorm" in s for s in names) == 0 and len(names) == 1 and names[0].startswith("triton_"), str(names))
++    check("capture under prefill context: replay bitwise equal to baseline eager", torch.equal(y, yb) and torch.equal(ro, rob))
++
++
++def main():
++    test_selection()
++    test_policy_table()
++    test_module_paths()
++    test_errors_propagate()
++    test_graph_capture_under_prefill_context()
++    n_fail = sum(not ok for _, ok in RESULTS)
++    print(f"TOTAL {len(RESULTS)} checks, {len(RESULTS) - n_fail} PASS, {n_fail} FAIL")
++    return 0 if n_fail == 0 else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/nv5/tests/test_opd_baseline_transparency.py b/nv5/tests/test_opd_baseline_transparency.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..468847f72205cabbc3b9584640497d51f0dfaf5a
+--- /dev/null
++++ b/nv5/tests/test_opd_baseline_transparency.py
+@@ -0,0 +1,179 @@
++#!/usr/bin/env python
++"""OP-D: with NV5_RMSNORM_BACKEND unset, the modified RMSNorm must be bit-identical to upstream bb823b3e.
++
++The upstream layernorm.py is extracted with `git show <sha>:nanovllm/layers/layernorm.py` into $TMPDIR
++(no checkout). Covers P0.5 input families F1-F5 and shapes, bf16/fp16, RMS-only 2D and non-contiguous
++3D (q_norm layout), memory semantics, and fp32 (upstream alias behaviour must be preserved as-is).
++
++Run: source env/activate.sh && python nv5/tests/test_opd_baseline_transparency.py   (from nano-vllm root)
++"""
++import importlib.util
++import os
++import subprocess
++import sys
++import tempfile
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[2]
++sys.path.insert(0, str(ROOT))
++UPSTREAM_SHA = "bb823b3e06983d71485a8e1f23715ebd87d98ef8"
++assert not os.environ.get("NV5_RMSNORM_BACKEND"), "OP-D must run with NV5_RMSNORM_BACKEND unset"
++
++import torch  # noqa: E402
++
++# Many dtype/shape combinations in one process: a hit on the recompile limit would silently fall back to
++# eager for BOTH classes and make them trivially equal, so the limit is raised and compiled use is checked.
++torch._dynamo.config.cache_size_limit = 256
++
++from nanovllm.layers.layernorm import RMSNorm as ModRMSNorm  # noqa: E402
++
++EPS = 1e-6
++RESULTS = []
++
++
++def check(name, cond, detail=""):
++    RESULTS.append((name, bool(cond)))
++    if not cond or os.environ.get("NV5_VERBOSE"):
++        print(f"{'PASS' if cond else 'FAIL'}  {name}  {detail}")
++
++
++def load_upstream():
++    src = subprocess.run(["git", "-C", str(ROOT), "show", f"{UPSTREAM_SHA}:nanovllm/layers/layernorm.py"],
++                         check=True, capture_output=True, text=True).stdout
++    d = Path(tempfile.mkdtemp(prefix="nv5_opd_"))
++    p = d / "upstream_layernorm.py"
++    p.write_text(src)
++    spec = importlib.util.spec_from_file_location("nv5_upstream_layernorm", p)
++    mod = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(mod)
++    return mod.RMSNorm, p
++
++
++def make_inputs(family, dt, N, K, g):
++    p = 10 if dt == torch.float16 else 7
++    rnd_w = lambda: (1.0 + 0.25 * torch.randn(K, device="cuda", generator=g)).to(dt)  # noqa: E731
++    if family == "F1_random":
++        return (torch.randn(N, K, device="cuda", generator=g).to(dt),
++                (4 * torch.randn(N, K, device="cuda", generator=g)).to(dt), rnd_w())
++    if family in ("F2_midpoint_w1", "F3_midpoint_randw"):
++        vals = torch.tensor([(2 * m + 1) * 2.0 ** (-(p + 1)) for m in range(4)], dtype=torch.float64, device="cuda")
++        r = vals[torch.arange(K, device="cuda") % 4].to(dt).unsqueeze(0).expand(N, K).contiguous()
++        w = torch.ones(K, dtype=dt, device="cuda") if family == "F2_midpoint_w1" else rnd_w()
++        return torch.ones(N, K, dtype=dt, device="cuda"), r, w
++    if family == "F4_zero_residual_randw":
++        x = (2 * torch.randn(N, K, device="cuda", generator=g)).to(dt)
++        return x, torch.zeros_like(x), rnd_w()
++    if family == "F5_biased_up":
++        mant = torch.randint(0, 2 ** p, (N, K), device="cuda", generator=g).double()
++        sign = torch.where(torch.rand(N, K, device="cuda", generator=g) < 0.5, -1.0, 1.0).double()
++        scale = 2.0 ** torch.randint(-1, 2, (N, K), device="cuda", generator=g).double()
++        return (sign * (1 + mant * 2.0 ** -p) * scale).to(dt), (sign * 0.75 * 2.0 ** -p * scale).to(dt), rnd_w()
++    raise ValueError(family)
++
++
++SHAPES = {"F1_random": [(1, 1024), (4, 896), (64, 1024), (512, 1024), (2048, 1024), (7, 4096), (512, 4096)],
++          "F2_midpoint_w1": [(4, 1024), (16, 4096)],
++          "F3_midpoint_randw": [(4, 1024), (16, 4096)],
++          "F4_zero_residual_randw": [(1, 1024), (64, 1024), (512, 4096)],
++          "F5_biased_up": [(1, 1024), (64, 1024), (512, 1024), (16, 4096)]}
++
++
++def pair(K, dt, w, Up):
++    a, b = Up(K, eps=EPS).to(device="cuda", dtype=dt), ModRMSNorm(K, eps=EPS).to(device="cuda", dtype=dt)
++    with torch.no_grad():
++        a.weight.copy_(w)
++        b.weight.copy_(w)
++    assert b._nv5_backend == "baseline" and b._nv5_impl is None
++    return a, b
++
++
++def mem_ok(ins, outs):
++    ptrs = {t.data_ptr() for t in ins}
++    return all(o.data_ptr() not in ptrs for o in outs) and len({o.data_ptr() for o in outs}) == len(outs)
++
++
++def fused_cases(Up):
++    for dt in (torch.bfloat16, torch.float16):
++        g = torch.Generator(device="cuda").manual_seed(20260928)
++        for fam, shapes in SHAPES.items():
++            for N, K in shapes:
++                x, r, w = make_inputs(fam, dt, N, K, g)
++                a, b = pair(K, dt, w, Up)
++                x0, r0 = x.clone(), r.clone()
++                with torch.inference_mode():
++                    ya, ra = a(x, r)
++                    yb, rb = b(x, r)
++                    ye, _ = ModRMSNorm.add_rms_forward._torchdynamo_orig_callable(b, x, r)
++                tag = f"fused {str(dt)[6:]} {fam} N={N} K={K}"
++                check(f"{tag} y bitwise", torch.equal(ya.view(torch.int16), yb.view(torch.int16)))
++                check(f"{tag} residual_out bitwise", torch.equal(ra.view(torch.int16), rb.view(torch.int16)))
++                check(f"{tag} memory semantics", torch.equal(x, x0) and torch.equal(r, r0)
++                      and mem_ok((x, r), (yb, rb)) and mem_ok((x, r), (ya, ra))
++                      and yb.is_contiguous() and rb.is_contiguous() and yb.dtype == ya.dtype == dt)
++                if fam in ("F1_random", "F4_zero_residual_randw"):
++                    frac = (yb != ye).float().mean().item()
++                    check(f"{tag} compiled path in use (differs from eager body)", frac > 0.1, f"frac={frac:.3f}")
++
++
++def rms_only_cases(Up):
++    for dt in (torch.bfloat16, torch.float16):
++        g = torch.Generator(device="cuda").manual_seed(7)
++        for shape in ((1, 1024), (512, 1024), (28, 16, 128), (28, 8, 128)):
++            K = shape[-1]
++            if len(shape) == 3:
++                big = torch.randn(shape[0], 32 * K, device="cuda", generator=g).to(dt)
++                x = big[:, : shape[1] * K].view(*shape)
++            else:
++                x = (2 * torch.randn(*shape, device="cuda", generator=g)).to(dt)
++            w = (1 + 0.25 * torch.randn(K, device="cuda", generator=g)).to(dt)
++            a, b = pair(K, dt, w, Up)
++            x0 = x.clone()
++            with torch.inference_mode():
++                ya, yb = a(x), b(x)
++            tag = f"rms-only {str(dt)[6:]} shape={shape} contiguous={x.is_contiguous()}"
++            check(f"{tag} y bitwise", torch.equal(ya.view(torch.int16), yb.view(torch.int16)))
++            check(f"{tag} memory semantics", torch.equal(x, x0) and mem_ok((x,), (yb,)) and yb.shape == x.shape)
++
++
++def fp32_cases(Up):
++    g = torch.Generator(device="cuda").manual_seed(3)
++    w = (1 + 0.25 * torch.randn(1024, device="cuda", generator=g))
++    xs = torch.randn(4, 1024, device="cuda", generator=g)
++    rs = torch.randn(4, 1024, device="cuda", generator=g)
++    obs = []
++    for cls in (Up, ModRMSNorm):
++        m = cls(1024, eps=EPS).to(device="cuda", dtype=torch.float32)
++        with torch.no_grad():
++            m.weight.copy_(w)
++        x, r = xs.clone(), rs.clone()
++        with torch.inference_mode():
++            y, ro = m(x, r)
++        xq = xs.clone()
++        with torch.inference_mode():
++            yq = m(xq)
++        obs.append(dict(y=y.clone(), ro=ro.clone(), x_after=x.clone(), r_after=r.clone(), yq=yq.clone(), xq_after=xq.clone(),
++                        alias=(y.data_ptr() == x.data_ptr(), ro.data_ptr() == x.data_ptr(), yq.data_ptr() == xq.data_ptr())))
++    u, m = obs
++    check("fp32 add_rms outputs bitwise equal to upstream", torch.equal(u["y"], m["y"]) and torch.equal(u["ro"], m["ro"]))
++    check("fp32 add_rms input mutation identical to upstream", torch.equal(u["x_after"], m["x_after"]) and torch.equal(u["r_after"], m["r_after"]))
++    check("fp32 rms-only output/mutation identical to upstream", torch.equal(u["yq"], m["yq"]) and torch.equal(u["xq_after"], m["xq_after"]))
++    check("fp32 alias pattern identical to upstream (known upstream behaviour kept)", u["alias"] == m["alias"], f"alias={m['alias']}")
++
++
++def main():
++    Up, p = load_upstream()
++    print(f"upstream layernorm extracted from {UPSTREAM_SHA} -> {p}")
++    print(f"modified layernorm: {ModRMSNorm.__module__} ({Path(sys.modules[ModRMSNorm.__module__].__file__)})")
++    print(f"torch {torch.__version__}, inductor cache {os.environ.get('TORCHINDUCTOR_CACHE_DIR')}")
++    fused_cases(Up)
++    rms_only_cases(Up)
++    fp32_cases(Up)
++    import torch._dynamo.utils as du
++    print(f"dynamo: stats={dict(du.counters['stats'])} graph_break={dict(du.counters['graph_break'])}")
++    n_fail = sum(not ok for _, ok in RESULTS)
++    print(f"OP-D TOTAL {len(RESULTS)} checks, {len(RESULTS) - n_fail} PASS, {n_fail} FAIL")
++    return 0 if n_fail == 0 else 1
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
